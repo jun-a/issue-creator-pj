@@ -6,6 +6,16 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List
 from datetime import datetime
 import uuid
+import os
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+# .env設定の読み込み
+load_dotenv()
+
+# Geminiの設定
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+model = genai.GenerativeModel('gemini-pro')
 
 # 型定義
 class Issue(BaseModel):
@@ -30,10 +40,56 @@ templates = Jinja2Templates(directory="templates")
 def create_issue_from_text(text: str) -> Issue:
     """自然言語をIssue形式に変換する"""
     try:
+        # Geminiに送るプロンプト
+        prompt = f"""
+以下の要望から、GitHubのIssue形式に変換してください。
+以下の4つの要素を必ず含めてください：
+
+1. タイトル：簡潔な要約（50文字以内）
+2. ユーザーストーリー：「〜として、〜したい」形式で記述
+3. 受け入れ基準：具体的な完了条件をリストで
+4. 技術要件：実装に必要な技術的な要件をリストで
+
+要望：
+{text}
+"""
+        # Geminiで変換
+        response = model.generate_content(prompt)
+        content = response.text
+
+        # 応答を解析
+        lines = content.split('\n')
+        title = ""
+        story = ""
+        criteria = ""
+        requirements = ""
+        
+        current_section = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith('タイトル：') or line.startswith('# タイトル'):
+                current_section = 'title'
+                title = line.split('：', 1)[1] if '：' in line else ""
+            elif line.startswith('ユーザーストーリー：') or line.startswith('# ユーザーストーリー'):
+                current_section = 'story'
+            elif line.startswith('受け入れ基準：') or line.startswith('# 受け入れ基準'):
+                current_section = 'criteria'
+            elif line.startswith('技術要件：') or line.startswith('# 技術要件'):
+                current_section = 'requirements'
+            elif line and current_section:
+                if current_section == 'story':
+                    story += line + '\n'
+                elif current_section == 'criteria':
+                    criteria += line + '\n'
+                elif current_section == 'requirements':
+                    requirements += line + '\n'
+        
         return Issue(
             id=str(uuid.uuid4()),
-            title=text[:50] + "...",
-            story=text,
+            title=title.strip(),
+            story=story.strip(),
+            criteria=criteria.strip(),
+            requirements=requirements.strip(),
             created_at=datetime.utcnow().isoformat()
         )
     except Exception as e:
