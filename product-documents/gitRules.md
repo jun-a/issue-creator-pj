@@ -3,10 +3,10 @@
 
 ```bash
 # ユースケースに基づいた一意のブランチを作成
-git checkout -b feature/uc-<ユースケース番号>-<簡潔な説明>
+git checkout -b feature/<簡潔な説明>
 
 # プルリクエストを作成し早期フィードバックを得る
-gh pr create --draft --title "UC-<番号>: <ユースケースタイトル>" --body "## 概要
+gh pr create --draft --title "<ユースケースタイトル>" --body "## 概要
 - <ユースケースの説明>
 
 ## 実装方針
@@ -22,7 +22,7 @@ gh pr create --draft --title "UC-<番号>: <ユースケースタイトル>" --b
 ```bash
 # 変更をステージングしてコミット
 git add <変更したファイル>
-git commit -m "UC-<番号>: <具体的な変更内容>"
+git commit -m "<具体的な変更内容>"
 ```
 
 4. ユースケース完了時:
@@ -31,8 +31,8 @@ git commit -m "UC-<番号>: <具体的な変更内容>"
 その後、以下の手順を実行します。
 ```bash
 # 完了を記録してプッシュ
-git commit --allow-empty -m "✅ UC-<番号>を完了: <達成した成果>"
-git push origin feature/uc-<ユースケース番号>-<簡潔な説明>
+git commit --allow-empty -m "✅ 完了: <達成した成果>"
+git push origin feature/<簡潔な説明>
 
 # プルリクエストをレビュー可能状態に更新
 gh pr ready
