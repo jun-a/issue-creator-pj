@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>自然言語からGitHub Issueを生成する</h1>
+<form action="/generate_issue" method="post">
+    <div class="field">
+        <label class="label">要望を入力してください:</label>
+        <div class="control">
+            <textarea class="textarea" name="user_input" required></textarea>
+        </div>
+    </div>
+    <div class="control">
+        <button type="submit" class="button is-primary">生成</button>
+    </div>
+</form>
+{% endblock %}
