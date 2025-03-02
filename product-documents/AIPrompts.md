@@ -77,10 +77,9 @@ Bulma CSSを使用して、以下の要件を満たすレスポンシブなレ�
 
 ### 2.2 HTMX拡張機能
 
-```prompt
 static/htmx.min.jsと同じディレクトリに、以下の単一のHTMX拡張機能を実装してください：
 
-1. 拡張機能の定義（static/issue-manager.js内に実装）
+1. 拡張機能の定義（static/function.js内に実装）
    ```javascript
    htmx.defineExtension('issue-manager', {
      init: function(api) {
@@ -122,7 +121,6 @@ static/htmx.min.jsと同じディレクトリに、以下の単一のHTMX拡張�
    ```
 
 注意：新しいJavaScriptファイルは作成せず、必要最小限の実装に留めてください。
-```
 
 ## 3. バックエンド実装プロンプト
 
