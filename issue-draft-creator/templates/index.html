@@ -1,16 +1,59 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>自然言語からGitHub Issueを生成する</h1>
-<form action="/generate_issue" method="post">
-    <div class="field">
-        <label class="label">要望を入力してください:</label>
-        <div class="control">
-            <textarea class="textarea" name="user_input" required></textarea>
+<div class="columns">
+    <div class="column is-8 is-offset-2">
+        <h1 class="title">Create New Issue</h1>
+        
+        <form hx-post="/api/requests"
+              hx-trigger="submit"
+              hx-target="#preview-area"
+              hx-swap="innerHTML"
+              hx-indicator="#loading">
+            
+            <div class="field">
+                <label class="label">Describe your issue in natural language</label>
+                <div class="control">
+                    <textarea name="user_input"
+                             class="textarea"
+                             placeholder="Enter your description here..."
+                             required></textarea>
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="control">
+                    <button class="button is-primary" type="submit">
+                        Generate Issue
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div id="loading" class="is-hidden">
+            <progress class="progress is-small is-primary" max="100">15%</progress>
         </div>
+
+        <div id="preview-area" class="mt-5"></div>
     </div>
-    <div class="control">
-        <button type="submit" class="button is-primary">生成</button>
-    </div>
-</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        document.getElementById('loading').classList.remove('is-hidden');
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        document.getElementById('loading').classList.add('is-hidden');
+    });
+
+    document.body.addEventListener('htmx:error', function(evt) {
+        const errorNotification = document.getElementById('error-notification');
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.textContent = evt.detail.error;
+        errorNotification.classList.remove('is-hidden');
+    });
+</script>
 {% endblock %}
