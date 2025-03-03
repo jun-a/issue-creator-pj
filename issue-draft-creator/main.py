@@ -324,8 +324,9 @@ def get_issue_by_id(issue_id: str) -> Optional[Issue]:
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     try:
-        # ダミーデータを追加（テスト用）
-        recent_drafts = storage.get_all_issues()[:3] if storage.get_all_issues() else []
+        sorted_issues = sorted(storage.get_all_issues(), key=lambda x: x.created_at, reverse=True)  # some_attributeを適切な属性に置き換えてください
+        recent_drafts = sorted_issues[:3] if sorted_issues else []
+
         templates_data = []  # 本来はテンプレート一覧を取得する処理
         
         return templates.TemplateResponse("index.html", {
@@ -401,7 +402,8 @@ async def preview_issue(request: Request, issue_id: str):
 @app.get("/history", response_class=HTMLResponse)
 async def read_history(request: Request):
     try:
-        issues = storage.get_all_issues()  # ストレージから全てのissueを取得
+        sorted_issues = sorted(storage.get_all_issues(), key=lambda x: x.created_at, reverse=True)  # some_attributeを適切な属性に置き換えてください
+        issues = sorted_issues if sorted_issues else []
         return templates.TemplateResponse("history.html", {
             "request": request,
             "issues": issues

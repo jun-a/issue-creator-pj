@@ -71,8 +71,7 @@
                     <thead>
                         <tr>
                             <th>タイトル</th>
-                            <th>リポジトリ</th>
-                            <th>最終更新</th>
+                            <th>作成日時</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -80,8 +79,7 @@
                         {% for draft in recent_drafts %}
                         <tr>
                             <td>{{ draft.title }}</td>
-                            <td>{{ draft.repository.owner }}/{{ draft.repository.name }} if draft.repository else "未設定" }}</td>
-                            <td>{{ draft.created_at }}</td>
+                            <td>{{ draft.created_at[:16].replace('T', ' ') }}</td>
                             <td>
                                 <div class="buttons are-small">
                                     <a href="/preview/{{ draft.id }}" class="button is-primary">
