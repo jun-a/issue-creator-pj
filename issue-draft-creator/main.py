@@ -9,13 +9,14 @@ import uuid
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
+import logging
 
 # .env設定の読み込み
 load_dotenv()
 
 # Geminiの設定
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-2.0-flash')
 
 # 型定義
 class Issue(BaseModel):
@@ -36,6 +37,9 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# ロガーの設定
+logger = logging.getLogger("uvicorn")
+
 # ユーティリティ関数
 def create_issue_from_text(text: str) -> Issue:
     """自然言語をIssue形式に変換する"""
@@ -43,21 +47,43 @@ def create_issue_from_text(text: str) -> Issue:
         # Geminiに送るプロンプト
         prompt = f"""
 以下の要望から、GitHubのIssue形式に変換してください。
-以下の4つの要素を必ず含めてください：
+必ず以下の厳密なフォーマットで出力してください。各セクションのヘッダーは変更しないでください：
 
-1. タイトル：簡潔な要約（50文字以内）
-2. ユーザーストーリー：「〜として、〜したい」形式で記述
-3. 受け入れ基準：具体的な完了条件をリストで
-4. 技術要件：実装に必要な技術的な要件をリストで
+タイトル: [ここに50文字以内の簡潔な要約を記述]
 
-要望：
+ユーザーストーリー:
+- [ここに「〜として、〜したい」形式で記述]
+
+受け入れ基準:
+- [ここに具体的な完了条件を箇条書きで記述]
+- [複数の条件を記述]
+
+技術要件:
+- [ここに実装に必要な技術的な要件を箇条書きで記述]
+- [複数の要件を記述]
+
+注意:
+- 各セクションのヘッダーは必ず上記の形式で記述してください
+- セクション間は必ず1行空けてください
+- 箇条書きは必ず「-」を使用してください
+- タイトルの後のコロンは半角を使用してください
+
+要望:
 {text}
 """
+        logger.info("=== Gemini key ===")
+        logger.info(os.getenv('GOOGLE_API_KEY'))
         # Geminiで変換
         response = model.generate_content(prompt)
         content = response.text
-
-        # 応答を解析
+        
+        # デバッグ出力
+        logger.info("=== Gemini Response Debug ===")
+        logger.info(f"Response type: {type(response)}")
+        logger.info(f"Content text: {content}")
+        logger.info("=== Debug End ===")
+        
+        # 応答を解析処理も改善
         lines = content.split('\n')
         title = ""
         story = ""
@@ -67,22 +93,36 @@ def create_issue_from_text(text: str) -> Issue:
         current_section = None
         for line in lines:
             line = line.strip()
-            if line.startswith('タイトル：') or line.startswith('# タイトル'):
+            if not line:
+                continue
+            
+            # ヘッダー判定を厳密化
+            if line.startswith('タイトル:'):
                 current_section = 'title'
-                title = line.split('：', 1)[1] if '：' in line else ""
-            elif line.startswith('ユーザーストーリー：') or line.startswith('# ユーザーストーリー'):
+                title = line.split(':', 1)[1].strip() if ':' in line else ""
+            elif line == 'ユーザーストーリー:':
                 current_section = 'story'
-            elif line.startswith('受け入れ基準：') or line.startswith('# 受け入れ基準'):
+            elif line == '受け入れ基準:':
                 current_section = 'criteria'
-            elif line.startswith('技術要件：') or line.startswith('# 技術要件'):
+            elif line == '技術要件:':
                 current_section = 'requirements'
-            elif line and current_section:
+            # 箇条書き対応
+            elif line.startswith('- '):
+                line = line[2:].strip()
                 if current_section == 'story':
                     story += line + '\n'
                 elif current_section == 'criteria':
                     criteria += line + '\n'
                 elif current_section == 'requirements':
                     requirements += line + '\n'
+
+        # デバッグ出力を追加
+        logger.info("=== Parsed Result ===")
+        logger.info(f"Title: [{title}]")
+        logger.info(f"Story: [{story}]")
+        logger.info(f"Criteria: [{criteria}]")
+        logger.info(f"Requirements: [{requirements}]")
+        logger.info("=== Parse End ===")
         
         return Issue(
             id=str(uuid.uuid4()),
