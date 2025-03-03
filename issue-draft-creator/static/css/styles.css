@@ -500,3 +500,9 @@ tr:hover {
     font-size: 0.875rem;
     line-height: 1.5;
 }
+
+/* dangerボタン内のアイコンを白抜きに設定 */
+.button.is-danger .icon,
+.button.is-danger .icon i {
+  color: white !important;
+}

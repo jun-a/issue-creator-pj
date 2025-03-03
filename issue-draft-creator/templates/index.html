@@ -61,7 +61,7 @@
                     <span class="icon mr-2">
                         <i class="fas fa-history"></i>
                     </span>
-                    <span>最近の下書き</span>
+                    <span>履歴</span>
                 </span>
             </h3>
             
@@ -89,11 +89,6 @@
                                             <i class="fas fa-eye"></i>
                                         </span>
                                     </a>
-                                    <button class="button is-danger" hx-delete="/api/drafts/{{ draft.id }}" hx-confirm="この下書きを削除しますか？">
-                                        <span class="icon">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </span>
-                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -107,13 +102,13 @@
                         <span class="icon mr-1">
                             <i class="fas fa-list"></i>
                         </span>
-                        <span>すべての下書きを表示</span>
+                        <span>すべての履歴を表示</span>
                     </span>
                 </a>
             </div>
             {% else %}
             <div class="notification is-light">
-                <p>下書きがありません。新しいIssueを作成してみましょう。</p>
+                <p>履歴がありません。新しいIssueを作成してみましょう。</p>
             </div>
             {% endif %}
         </div>
