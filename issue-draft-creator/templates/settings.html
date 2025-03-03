@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="columns">
+    <div class="column is-8 is-offset-2">
+        <h1 class="title">Settings</h1>
+        
+        <div class="box">
+            <h2 class="subtitle">GitHub Repositories</h2>
+            <p class="mb-4">
+                Configure the GitHub repositories where you want to create issues.
+            </p>
+            
+            <form hx-post="/api/repos"
+                  hx-trigger="submit"
+                  hx-target="#repo-list-container"
+                  hx-swap="innerHTML"
+                  hx-indicator="#loading">
+                  
+                <div class="field">
+                    <label class="label">Repository Owner</label>
+                    <div class="control">
+                        <input class="input" type="text" name="owner" placeholder="e.g. username or organization" required>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Repository Name</label>
+                    <div class="control">
+                        <input class="input" type="text" name="name" placeholder="e.g. my-project" required>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">Repository URL (Optional)</label>
+                    <div class="control">
+                        <input class="input" type="text" name="url" placeholder="e.g. https://github.com/username/repo">
+                        <p class="help">If left empty, URL will be constructed from owner and name</p>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <div class="control">
+                        <button type="submit" class="button is-primary">
+                            <span class="icon">
+                                <i class="fas fa-plus"></i>
+                            </span>
+                            <span>Add Repository</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+            
+            <div id="loading" class="is-hidden mt-3">
+                <progress class="progress is-small is-primary" max="100">15%</progress>
+            </div>
+            
+            <div class="mt-5" id="repo-list-container">
+                {% include "partials/repo_list.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        document.getElementById('loading').classList.remove('is-hidden');
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        document.getElementById('loading').classList.add('is-hidden');
+    });
+
+    document.body.addEventListener('htmx:error', function(evt) {
+        const errorNotification = document.getElementById('error-notification');
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.textContent = evt.detail.error;
+        errorNotification.style.display = 'block';
+        errorNotification.classList.remove('is-hidden');
+    });
+</script>
+{% endblock %}

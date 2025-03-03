@@ -58,31 +58,63 @@
                     <div id="github-title" class="github-title">{{ issue.title }}</div>
                     <div id="github-description" class="github-description markdown-preview">
                         <pre><code>## User Story
-
 {{ issue.story }}
 
 {% if issue.criteria %}
 ## Acceptance Criteria
-
 {% for criterion in issue.criteria.split('\n') %}
-{% if criterion.strip() %}
-- {{ criterion }}
-{% endif %}
-{% endfor %}
+{% if criterion.strip() %}- {{ criterion }}
+{% endif %}{% endfor %}
 {% endif %}
 
 {% if issue.requirements %}
 ## Technical Requirements
-
 {% for req in issue.requirements.split('\n') %}
-{% if req.strip() %}
-- {{ req }}
-{% endif %}
-{% endfor %}
+{% if req.strip() %}- {{ req }}
+{% endif %}{% endfor %}
 {% endif %}</code></pre>
                     </div>
                 </div>
             </div>
+
+            <!-- GitHubリポジトリ選択とIssue登録リンク -->
+            {% if repos %}
+            <div class="mt-5 mb-5">
+                <h3 class="subtitle">Create GitHub Issue</h3>
+                <div class="field">
+                    <label class="label">Select Repository</label>
+                    <div class="control">
+                        <div class="select">
+                            <select id="repo-select">
+                                {% for repo in repos %}
+                                <option value="{{ repo.id }}" 
+                                        data-owner="{{ repo.owner }}" 
+                                        data-name="{{ repo.name }}"
+                                        data-url="{{ repo.url }}">
+                                    {{ repo.owner }}/{{ repo.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field is-grouped mt-3">
+                    <div class="control">
+                        <a id="github-issue-link" href="#" class="button is-primary" target="_blank">
+                            <span class="icon">
+                                <i class="fab fa-github"></i>
+                            </span>
+                            <span>Create Issue on GitHub</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="notification is-warning mt-5">
+                <p>No GitHub repositories configured. <a href="/settings">Add repositories</a> to enable direct issue creation.</p>
+            </div>
+            {% endif %}
 
             <div class="field is-grouped mt-5">
                 <div class="control">
@@ -151,6 +183,30 @@
                     copyNotification.style.display = 'block';
                 }
             );
+        }
+
+        // GitHubリンク生成機能
+        const repoSelect = document.getElementById('repo-select');
+        const githubIssueLink = document.getElementById('github-issue-link');
+
+        if (repoSelect && githubIssueLink) {
+            // ページ読み込み時にリンクを更新
+            updateGitHubIssueLink();
+
+            // リポジトリ選択が変更されたらリンクを更新
+            repoSelect.addEventListener('change', updateGitHubIssueLink);
+        }
+
+        function updateGitHubIssueLink() {
+            const selectedOption = repoSelect.options[repoSelect.selectedIndex];
+            const repoUrl = selectedOption.getAttribute('data-url');
+            const title = encodeURIComponent(document.getElementById('github-title').innerText);
+            const description = encodeURIComponent(document.querySelector('.github-description pre code').innerText);
+            
+            // GitHubのIssue作成リンクを生成
+            const issueUrl = `${repoUrl}/issues/new?title=${title}&body=${description}&labels=feature`;
+            
+            githubIssueLink.href = issueUrl;
         }
     });
 </script>

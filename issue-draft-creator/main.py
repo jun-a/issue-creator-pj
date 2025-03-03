@@ -121,6 +121,81 @@ class LocalStorage:
 # ストレージのインスタンス化
 storage = LocalStorage()
 
+# GitHubリポジトリ設定モデル
+class GitHubRepo(BaseModel):
+    id: str
+    name: str
+    owner: str
+    url: str
+    created_at: str
+    
+    @property
+    def full_name(self) -> str:
+        return f"{self.owner}/{self.name}"
+    
+    @property
+    def issues_url(self) -> str:
+        return f"{self.url}/issues/new"
+
+# リポジトリストレージクラス
+class RepoStorage:
+    def __init__(self, file_path: str = "repositories.json"):
+        self.file_path = file_path
+        self.repos: Dict[str, GitHubRepo] = {}
+        self._load()
+    
+    def _load(self):
+        """JSONファイルからリポジトリを読み込む"""
+        try:
+            if os.path.exists(self.file_path):
+                with open(self.file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.repos = {
+                        id: GitHubRepo(**repo_data)
+                        for id, repo_data in data.items()
+                    }
+        except Exception as e:
+            logger.error(f"Failed to load repositories: {e}")
+            self.repos = {}
+    
+    def _save(self):
+        """リポジトリをJSONファイルに保存"""
+        try:
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                json.dump(
+                    {id: repo.dict() for id, repo in self.repos.items()},
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str
+                )
+        except Exception as e:
+            logger.error(f"Failed to save repositories: {e}")
+    
+    def add_repo(self, repo: GitHubRepo):
+        """新しいリポジトリを追加"""
+        self.repos[repo.id] = repo
+        self._save()
+    
+    def delete_repo(self, repo_id: str) -> bool:
+        """リポジトリを削除"""
+        if repo_id in self.repos:
+            del self.repos[repo_id]
+            self._save()
+            return True
+        return False
+    
+    def get_repo(self, repo_id: str) -> Optional[GitHubRepo]:
+        """IDでリポジトリを取得"""
+        return self.repos.get(repo_id)
+    
+    def get_all_repos(self) -> List[GitHubRepo]:
+        """全てのリポジトリを取得"""
+        return list(self.repos.values())
+
+# ストレージのインスタンス化
+repo_storage = RepoStorage()
+
 # Jinja2フィルターの追加
 def format_list_items(text):
     """テキストを行ごとに分割してリスト項目にフォーマット"""
@@ -283,12 +358,14 @@ async def api_requests(request: Request, user_input: str = Form(...)):
 @app.get("/preview/{issue_id}", response_class=HTMLResponse)
 async def preview_issue(request: Request, issue_id: str):
     try:
-        issue = storage.get_issue(issue_id)  # ストレージからissueを取得
+        issue = storage.get_issue(issue_id)
+        repos = repo_storage.get_all_repos()
         if not issue:
             raise HTTPException(status_code=404, detail="Issue not found")
         return templates.TemplateResponse("preview.html", {
             "request": request,
-            "issue": issue
+            "issue": issue,
+            "repos": repos
         })
     except HTTPException as e:
         return templates.TemplateResponse("error.html", {
@@ -311,6 +388,78 @@ async def read_history(request: Request):
         })
     except Exception as e:
         return templates.TemplateResponse("error.html", {
+            "request": request,
+            "message": str(e)
+        })
+
+# GitHub関連エンドポイント
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    try:
+        repos = repo_storage.get_all_repos()
+        return templates.TemplateResponse("settings.html", {
+            "request": request,
+            "page_title": "Settings",
+            "repos": repos
+        })
+    except Exception as e:
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "message": str(e)
+        })
+
+@app.post("/api/repos", response_class=HTMLResponse)
+async def add_repository(request: Request, 
+                         name: str = Form(...), 
+                         owner: str = Form(...), 
+                         url: str = Form(...)):
+    try:
+        # URLの正規化
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+        
+        # GitHubのURLかどうかを簡易チェック
+        if 'github.com' not in url:
+            url = f'https://github.com/{owner}/{name}'
+        
+        repo = GitHubRepo(
+            id=str(uuid.uuid4()),
+            name=name,
+            owner=owner,
+            url=url,
+            created_at=datetime.utcnow().isoformat()
+        )
+        
+        repo_storage.add_repo(repo)
+        
+        return templates.TemplateResponse("partials/repo_list.html", {
+            "request": request,
+            "repos": repo_storage.get_all_repos()
+        })
+    except Exception as e:
+        return templates.TemplateResponse("partials/error_message.html", {
+            "request": request,
+            "message": str(e)
+        })
+
+@app.delete("/api/repos/{repo_id}", response_class=HTMLResponse)
+async def delete_repository(request: Request, repo_id: str):
+    try:
+        success = repo_storage.delete_repo(repo_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Repository not found")
+        
+        return templates.TemplateResponse("partials/repo_list.html", {
+            "request": request,
+            "repos": repo_storage.get_all_repos()
+        })
+    except HTTPException as e:
+        return templates.TemplateResponse("partials/error_message.html", {
+            "request": request,
+            "message": e.detail
+        })
+    except Exception as e:
+        return templates.TemplateResponse("partials/error_message.html", {
             "request": request,
             "message": str(e)
         })
