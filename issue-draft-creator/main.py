@@ -29,6 +29,7 @@ class Issue(BaseModel):
     criteria: Optional[str] = None
     requirements: Optional[str] = None
     created_at: str
+    repository: Optional[str] = None  # repository 属性を追加
 
     class Config:
         # JSONのシリアライズ時に改行を保持

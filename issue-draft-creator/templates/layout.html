@@ -8,11 +8,31 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 自作CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
-    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
-    <script src="https://unpkg.com/marked@4.3.0/marked.min.js"></script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.4"></script>
+    <!-- カスタムCSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    
     <style>
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: inline-flex;
+        }
+        .htmx-request.htmx-indicator {
+            display: inline-flex;
+        }
+        
+        /* アニメーション */
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
         /* Tailwind風のカスタムスタイル */
         :root {
             --primary-color: #3b82f6;
@@ -300,87 +320,44 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar" role="navigation" aria-label="main navigation">
-        <div class="container">
-            <div class="navbar-brand">
+    <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+                <strong>Issue Draft Creator</strong>
+            </a>
+        </div>
+        
+        <div class="navbar-menu">
+            <div class="navbar-start">
                 <a class="navbar-item" href="/">
-                    <span class="icon mr-2">
-                        <i class="fas fa-clipboard-list"></i>
-                    </span>
-                    <span class="has-text-weight-bold">Issue Draft Creator</span>
+                    ホーム
                 </a>
-                
-                <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
-                    <span aria-hidden="true"></span>
-                    <span aria-hidden="true"></span>
-                    <span aria-hidden="true"></span>
+                <a class="navbar-item" href="/history">
+                    履歴
                 </a>
-            </div>
-
-            <div id="navbarMenu" class="navbar-menu">
-                <div class="navbar-end">
-                    <a href="/" class="navbar-item">
-                        <span class="icon-text">
-                            <span class="icon mr-1">
-                                <i class="fas fa-home"></i>
-                            </span>
-                            <span>ホーム</span>
-                        </span>
-                    </a>
-                    <a href="/history" class="navbar-item">
-                        <span class="icon-text">
-                            <span class="icon mr-1">
-                                <i class="fas fa-history"></i>
-                            </span>
-                            <span>履歴</span>
-                        </span>
-                    </a>
-                    <a href="/settings" class="navbar-item">
-                        <span class="icon-text">
-                            <span class="icon mr-1">
-                                <i class="fas fa-cog"></i>
-                            </span>
-                            <span>設定</span>
-                        </span>
-                    </a>
-                </div>
+                <a class="navbar-item" href="/settings">
+                    設定
+                </a>
             </div>
         </div>
     </nav>
-
-    <section class="main-content">
+    
+    <section class="section">
         <div class="container">
-            <div class="mb-5">
-                <nav class="breadcrumb" aria-label="breadcrumbs">
-                    <ul>
-                        <li><a href="/">ホーム</a></li>
-                        {% block breadcrumb %}{% endblock %}
-                    </ul>
-                </nav>
-            </div>
-            
             {% block content %}{% endblock %}
         </div>
     </section>
     
     <footer class="footer">
-        <div class="container">
-            <div class="content has-text-centered">
-                <p>
-                    <strong>Issue Draft Creator</strong> - GitHub Issueの作成を支援するツール
-                </p>
-                <p class="mt-3">
-                    <a href="https://github.com" target="_blank" class="icon">
-                        <i class="fab fa-github fa-lg"></i>
-                    </a>
-                </p>
-            </div>
+        <div class="content has-text-centered">
+            <p>
+                <strong>Issue Draft Creator</strong> by <a href="https://github.com">Your Name</a>.
+            </p>
         </div>
     </footer>
-
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    
+    <!-- カスタムJS -->
+    <script src="/static/js/script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // ナビゲーションバーの開閉

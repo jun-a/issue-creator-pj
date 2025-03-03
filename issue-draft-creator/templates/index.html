@@ -22,68 +22,36 @@
                 </span>
             </h2>
             
-            <form action="/issues/create" method="post">
+            <form hx-post="/api/requests" hx-target="#issue-result" hx-indicator=".htmx-indicator">
                 <div class="field">
-                    <label class="label">タイトル</label>
+                    <label class="label">やりたいことを自由に記述してください</label>
                     <div class="control">
-                        <input class="input" type="text" name="title" placeholder="Issue のタイトルを入力してください" required>
-                    </div>
-                </div>
-                
-                <div class="field">
-                    <label class="label">リポジトリ</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select name="repository" required>
-                                <option value="" disabled selected>リポジトリを選択してください</option>
-                                {% for repo in repositories %}
-                                <option value="{{ repo.id }}">{{ repo.owner }}/{{ repo.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="field">
-                    <label class="label">テンプレート</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select name="template" id="template-select">
-                                <option value="" disabled selected>テンプレートを選択してください</option>
-                                {% for template in templates %}
-                                <option value="{{ template.id }}">{{ template.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="field">
-                    <label class="label">説明</label>
-                    <div class="control">
-                        <textarea class="textarea" name="description" placeholder="Issue の詳細を入力してください" rows="6"></textarea>
+                        <textarea class="textarea" name="user_input" 
+                            placeholder="例：ユーザーとして、商品を購入する際にクレジットカードで支払いができるようにしたい" 
+                            rows="6" required></textarea>
                     </div>
                 </div>
                 
                 <div class="field is-grouped is-grouped-right">
                     <div class="control">
-                        <button class="button is-primary" type="submit" formaction="/issues/draft" name="action" value="draft">
+                        <button class="button is-primary" type="submit">
                             <span class="icon mr-1">
-                                <i class="fas fa-save"></i>
-                            </span>
-                            <span>下書き保存</span>
-                        </button>
-                    </div>
-                    <div class="control">
-                        <button class="button is-primary" type="submit" name="action" value="create">
-                            <span class="icon mr-1">
-                                <i class="fab fa-github"></i>
+                                <i class="fas fa-magic"></i>
                             </span>
                             <span>Issue作成</span>
                         </button>
+                        <span class="htmx-indicator ml-2">
+                            <span class="icon is-small">
+                                <i class="fas fa-spinner fa-pulse"></i>
+                            </span>
+                            <span>生成中...</span>
+                        </span>
                     </div>
                 </div>
             </form>
+            
+            <!-- Issue結果表示エリア -->
+            <div id="issue-result" class="mt-4"></div>
         </div>
         
         <!-- 最近の下書き -->
@@ -112,13 +80,13 @@
                         {% for draft in recent_drafts %}
                         <tr>
                             <td>{{ draft.title }}</td>
-                            <td>{{ draft.repository.owner }}/{{ draft.repository.name }}</td>
-                            <td>{{ draft.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ draft.repository.owner }}/{{ draft.repository.name }} if draft.repository else "未設定" }}</td>
+                            <td>{{ draft.created_at }}</td>
                             <td>
                                 <div class="buttons are-small">
-                                    <a href="/drafts/{{ draft.id }}/edit" class="button is-primary">
+                                    <a href="/preview/{{ draft.id }}" class="button is-primary">
                                         <span class="icon">
-                                            <i class="fas fa-edit"></i>
+                                            <i class="fas fa-eye"></i>
                                         </span>
                                     </a>
                                     <button class="button is-danger" hx-delete="/api/drafts/{{ draft.id }}" hx-confirm="この下書きを削除しますか？">

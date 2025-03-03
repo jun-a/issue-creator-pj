@@ -1,74 +1,101 @@
 <div class="box">
-    <h2 class="title is-4 github-title">{{ issue.title }}</h2>
+    <h3 class="title is-5">{{ issue.title }}</h3>
     
-    <div class="tabs is-boxed">
+    <div class="tabs">
         <ul>
-            <li class="is-active" id="preview-tab">
-                <a>
-                    <span class="icon is-small"><i class="fas fa-eye"></i></span>
-                    <span>プレビュー</span>
-                </a>
-            </li>
-            <li id="markdown-tab">
-                <a>
-                    <span class="icon is-small"><i class="fas fa-code"></i></span>
-                    <span>Markdown</span>
-                </a>
-            </li>
+            <li class="is-active"><a data-tab="preview">プレビュー</a></li>
+            <li><a data-tab="markdown">Markdown</a></li>
         </ul>
     </div>
     
-    <div id="preview-content" class="markdown-preview">
-        <h3>User Story</h3>
-        <p>{{ issue.story }}</p>
-        
-        {% if issue.criteria %}
-        <h3>Acceptance Criteria</h3>
-        <ul>
-            {% for item in issue.criteria|format_list_items %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-        
-        {% if issue.requirements %}
-        <h3>Technical Requirements</h3>
-        <ul>
-            {% for item in issue.requirements|format_list_items %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
+    <div id="tab-preview" class="tab-content">
+        <!-- ユーザーストーリー -->
+        <div class="content">
+            <h4 class="title is-6">User Story</h4>
+            <p>{{ issue.story }}</p>
+            
+            <!-- 受け入れ基準 -->
+            {% if issue.criteria %}
+            <h4 class="title is-6">Acceptance Criteria</h4>
+            <ul>
+                {% for item in issue.criteria|format_list_items %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            
+            <!-- 技術要件 -->
+            {% if issue.requirements %}
+            <h4 class="title is-6">Technical Requirements</h4>
+            <ul>
+                {% for item in issue.requirements|format_list_items %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
     </div>
     
-    <div id="markdown-content" class="is-hidden">
+    <div id="tab-markdown" class="tab-content is-hidden">
         <pre><code>{{ issue|to_markdown }}</code></pre>
     </div>
     
-    <div class="field is-grouped mt-5">
+    <div class="field is-grouped mt-4">
         <div class="control">
-            <a href="/preview/{{ issue.id }}" class="button is-primary">
-                <span class="icon">
-                    <i class="fas fa-external-link-alt"></i>
+            <a href="/preview/{{ issue.id }}" class="button is-info">
+                <span class="icon mr-1">
+                    <i class="fas fa-edit"></i>
                 </span>
                 <span>詳細表示</span>
             </a>
+        </div>
+        <div class="control">
+            <button class="button is-primary" id="copy-markdown">
+                <span class="icon mr-1">
+                    <i class="fas fa-copy"></i>
+                </span>
+                <span>Markdownをコピー</span>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-document.getElementById('preview-tab').addEventListener('click', function() {
-    document.getElementById('preview-tab').classList.add('is-active');
-    document.getElementById('markdown-tab').classList.remove('is-active');
-    document.getElementById('preview-content').classList.remove('is-hidden');
-    document.getElementById('markdown-content').classList.add('is-hidden');
-});
-
-document.getElementById('markdown-tab').addEventListener('click', function() {
-    document.getElementById('markdown-tab').classList.add('is-active');
-    document.getElementById('preview-tab').classList.remove('is-active');
-    document.getElementById('markdown-content').classList.remove('is-hidden');
-    document.getElementById('preview-content').classList.add('is-hidden');
-});
+    // タブ切り替え
+    document.querySelectorAll('[data-tab]').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // タブのアクティブ状態を切り替え
+            document.querySelectorAll('[data-tab]').forEach(t => {
+                t.parentElement.classList.remove('is-active');
+            });
+            this.parentElement.classList.add('is-active');
+            
+            // コンテンツの表示/非表示を切り替え
+            const tabId = this.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('is-hidden');
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('is-hidden');
+        });
+    });
+    
+    // Markdownコピー機能
+    document.getElementById('copy-markdown').addEventListener('click', function() {
+        const markdown = `{{ issue|to_markdown|safe }}`;
+        navigator.clipboard.writeText(markdown)
+            .then(() => {
+                this.classList.add('is-success');
+                this.querySelector('span:last-child').textContent = 'コピーしました';
+                
+                setTimeout(() => {
+                    this.classList.remove('is-success');
+                    this.querySelector('span:last-child').textContent = 'Markdownをコピー';
+                }, 2000);
+            })
+            .catch(err => {
+                console.error('クリップボードへのコピーに失敗しました', err);
+            });
+    });
 </script>
