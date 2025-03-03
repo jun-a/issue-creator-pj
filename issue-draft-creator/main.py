@@ -44,6 +44,26 @@ class Issue(BaseModel):
                 if key in obj and isinstance(obj[key], str):
                     obj[key] = obj[key].replace('\\n', '\n')
         return super().parse_obj(obj)
+    
+    def to_markdown(self) -> str:
+        """IssueをMarkdown形式に変換"""
+        md = []
+        md.append("## User Story\n")
+        md.append(self.story + "\n")
+        
+        if self.criteria:
+            md.append("\n## Acceptance Criteria\n")
+            for criterion in self.criteria.split('\n'):
+                if criterion.strip():
+                    md.append(f"- {criterion.strip()}\n")
+                    
+        if self.requirements:
+            md.append("\n## Technical Requirements\n")
+            for req in self.requirements.split('\n'):
+                if req.strip():
+                    md.append(f"- {req.strip()}\n")
+                    
+        return "".join(md)
 
 class IssueResponse(BaseModel):
     status: str
@@ -108,11 +128,16 @@ def format_list_items(text):
         return []
     return [line.strip() for line in text.split('\n') if line.strip()]
 
+def to_markdown(issue):
+    """IssueをMarkdown形式に変換するフィルター"""
+    return issue.to_markdown()
+
 # アプリケーションの初期化
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 templates.env.filters["format_list_items"] = format_list_items
+templates.env.filters["to_markdown"] = to_markdown
 
 # ロガーの設定
 logger = logging.getLogger("uvicorn")
@@ -157,7 +182,7 @@ technical_requirements:
                 raise HTTPException(status_code=400, detail="Empty YAML response")
             
             # 必須フィールドの確認
-            required_fields = ['title', 'user_story', 'acceptance_criteria', 'technical_requirements']
+            required_fields = ['title', 'user_story']
             missing_fields = [field for field in required_fields if not data.get(field)]
             if missing_fields:
                 raise HTTPException(
@@ -167,9 +192,27 @@ technical_requirements:
             
             # データの取得と検証
             title = str(data['title']).strip('"')
-            story = '\n'.join(data['user_story'])
-            criteria = '\n'.join(data['acceptance_criteria'])
-            requirements = '\n'.join(data['technical_requirements'])
+            
+            # リスト形式かどうかを確認してストーリーに変換
+            if isinstance(data['user_story'], list):
+                story = '\n'.join(data['user_story'])
+            else:
+                story = str(data['user_story'])
+            
+            # 受け入れ基準と技術要件（オプショナル）
+            criteria = None
+            if 'acceptance_criteria' in data and data['acceptance_criteria']:
+                if isinstance(data['acceptance_criteria'], list):
+                    criteria = '\n'.join(data['acceptance_criteria'])
+                else:
+                    criteria = str(data['acceptance_criteria'])
+            
+            requirements = None
+            if 'technical_requirements' in data and data['technical_requirements']:
+                if isinstance(data['technical_requirements'], list):
+                    requirements = '\n'.join(data['technical_requirements'])
+                else:
+                    requirements = str(data['technical_requirements'])
             
             # デバッグ出力
             logger.info("=== Parsed Result ===")

@@ -28,7 +28,7 @@
 
             <!-- GitHub Issue用のコピー機能 -->
             <div class="mt-5 mb-5">
-                <h3 class="subtitle">GitHub Issue Format</h3>
+                <h3 class="subtitle">GitHub Issue Format (Markdown)</h3>
                 
                 <div class="field is-grouped">
                     <div class="control">
@@ -56,31 +56,30 @@
 
                 <div class="github-preview mt-3">
                     <div id="github-title" class="github-title">{{ issue.title }}</div>
-                    <div id="github-description" class="github-description">
-                        <h3>User Story</h3>
-                        <p>{{ issue.story }}</p>
-                        
-                        {% if issue.criteria %}
-                        <h3>Acceptance Criteria</h3>
-                        <ul>
-                            {% for criterion in issue.criteria.split('\n') %}
-                                {% if criterion.strip() %}
-                                <li>{{ criterion }}</li>
-                                {% endif %}
-                            {% endfor %}
-                        </ul>
-                        {% endif %}
-                        
-                        {% if issue.requirements %}
-                        <h3>Technical Requirements</h3>
-                        <ul>
-                            {% for req in issue.requirements.split('\n') %}
-                                {% if req.strip() %}
-                                <li>{{ req }}</li>
-                                {% endif %}
-                            {% endfor %}
-                        </ul>
-                        {% endif %}
+                    <div id="github-description" class="github-description markdown-preview">
+                        <pre><code>## User Story
+
+{{ issue.story }}
+
+{% if issue.criteria %}
+## Acceptance Criteria
+
+{% for criterion in issue.criteria.split('\n') %}
+{% if criterion.strip() %}
+- {{ criterion }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if issue.requirements %}
+## Technical Requirements
+
+{% for req in issue.requirements.split('\n') %}
+{% if req.strip() %}
+- {{ req }}
+{% endif %}
+{% endfor %}
+{% endif %}</code></pre>
                     </div>
                 </div>
             </div>
@@ -133,7 +132,7 @@
         });
         
         copyDescriptionBtn?.addEventListener('click', function() {
-            const description = document.getElementById('github-description').innerText;
+            const description = document.querySelector('.github-description pre code').innerText;
             copyToClipboard(description, 'Description copied to clipboard!');
         });
         
