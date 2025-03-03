@@ -16,7 +16,7 @@
 {% block content %}
 <div class="columns">
     <div class="column is-10 is-offset-1">
-        <article class="message is-primary">
+        <div class="message box animate-fadeIn">
             <div class="message-header">
                 <p>{{ issue.title }}</p>
             </div>
@@ -65,7 +65,7 @@
                     <pre><code class="language-markdown">{{ issue|to_markdown }}</code></pre>
                 </div>
             </div>
-        </article>
+        </div>
         
         <div class="field is-grouped mt-5">
             <div class="control">
