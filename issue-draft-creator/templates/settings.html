@@ -7,38 +7,24 @@
 {% endblock %}
 
 {% block content %}
-<div class="columns">
-    <div class="column is-10 is-offset-1">
-        <h1 class="title is-2 mb-6">設定</h1>
-        
-        <div class="tabs is-boxed mb-5">
-            <ul>
-                <li class="is-active">
-                    <a>
-                        <span class="icon mr-2"><i class="fas fa-code-branch"></i></span>
-                        <span>GitHub リポジトリ</span>
-                    </a>
-                </li>
-                <li>
-                    <a>
-                        <span class="icon mr-2"><i class="fas fa-file-alt"></i></span>
-                        <span>テンプレート</span>
-                    </a>
-                </li>
-                <li>
-                    <a>
-                        <span class="icon mr-2"><i class="fas fa-cog"></i></span>
-                        <span>一般設定</span>
-                    </a>
-                </li>
-            </ul>
+<div class="columns is-centered">
+    <div class="column is-10">
+        <!-- メインヘッダー -->
+        <div class="has-text-centered mb-6">
+            <h1 class="title is-1">設定</h1>
+            <p class="subtitle is-4 mt-3">リポジトリの管理と基本設定</p>
         </div>
 
-        <div class="box">
-            <div class="mb-5">
-                <h3 class="title is-4 mb-2">リポジトリ管理</h3>
-                <p class="subtitle is-6">Issueを作成するGitHubリポジトリを管理します</p>
-            </div>
+        <!-- リポジトリ管理セクション -->
+        <div class="box animate-fadeIn">
+            <h2 class="title is-4 mb-4">
+                <span class="icon-text">
+                    <span class="icon mr-2">
+                        <i class="fas fa-cog"></i>
+                    </span>
+                    <span>リポジトリ管理</span>
+                </span>
+            </h2>
             
             <form id="repo-form" hx-post="/api/repos" hx-target="#repo-list-container" class="mb-6">
                 <div class="field is-horizontal">
