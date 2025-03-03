@@ -1,0 +1,52 @@
+{% extends 'layout.html' %}
+
+{% block title %}エラー{% endblock %}
+
+{% block content %}
+<div class="columns">
+    <div class="column is-8 is-offset-2">
+        <section class="hero is-danger">
+            <div class="hero-body">
+                <p class="title">
+                    <span class="icon-text">
+                        <span class="icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+                        <span>エラーが発生しました</span>
+                    </span>
+                </p>
+                <p class="subtitle">
+                    申し訳ありません、リクエストの処理中に問題が発生しました。
+                </p>
+            </div>
+        </section>
+        
+        <div class="box mt-5">
+            {% if message %}
+            <div class="notification is-danger is-light">
+                <strong>エラー詳細:</strong> {{ message }}
+            </div>
+            {% endif %}
+            
+            <p class="has-text-centered mb-5">
+                以下のオプションから選択してください:
+            </p>
+            
+            <div class="buttons is-centered">
+                <a href="/" class="button is-primary">
+                    <span class="icon">
+                        <i class="fas fa-home"></i>
+                    </span>
+                    <span>ホームに戻る</span>
+                </a>
+                <button class="button is-info" onclick="window.location.reload()">
+                    <span class="icon">
+                        <i class="fas fa-sync"></i>
+                    </span>
+                    <span>再試行</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

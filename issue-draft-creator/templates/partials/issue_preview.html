@@ -1,31 +1,74 @@
 <div class="box">
-    <h1 class="title">{{ issue.title }}</h1>
+    <h2 class="title is-4 github-title">{{ issue.title }}</h2>
     
-    <div class="content">
-        <h2 class="subtitle">User Story</h2>
+    <div class="tabs is-boxed">
+        <ul>
+            <li class="is-active" id="preview-tab">
+                <a>
+                    <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                    <span>プレビュー</span>
+                </a>
+            </li>
+            <li id="markdown-tab">
+                <a>
+                    <span class="icon is-small"><i class="fas fa-code"></i></span>
+                    <span>Markdown</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div id="preview-content" class="markdown-preview">
+        <h3>User Story</h3>
         <p>{{ issue.story }}</p>
-
+        
         {% if issue.criteria %}
-        <h2 class="subtitle">Acceptance Criteria</h2>
-        <div class="notification">
-            {{ issue.criteria }}
-        </div>
+        <h3>Acceptance Criteria</h3>
+        <ul>
+            {% for item in issue.criteria|format_list_items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
         {% endif %}
-
+        
         {% if issue.requirements %}
-        <h2 class="subtitle">Technical Requirements</h2>
-        <div class="notification">
-            {{ issue.requirements }}
-        </div>
+        <h3>Technical Requirements</h3>
+        <ul>
+            {% for item in issue.requirements|format_list_items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
         {% endif %}
     </div>
-
+    
+    <div id="markdown-content" class="is-hidden">
+        <pre><code>{{ issue|to_markdown }}</code></pre>
+    </div>
+    
     <div class="field is-grouped mt-5">
         <div class="control">
-            <a href="/preview/{{ issue.id }}" class="button is-info">Open Preview</a>
-        </div>
-        <div class="control">
-            <button class="button is-light" onclick="document.querySelector('form').reset()">Clear Form</button>
+            <a href="/preview/{{ issue.id }}" class="button is-primary">
+                <span class="icon">
+                    <i class="fas fa-external-link-alt"></i>
+                </span>
+                <span>詳細表示</span>
+            </a>
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('preview-tab').addEventListener('click', function() {
+    document.getElementById('preview-tab').classList.add('is-active');
+    document.getElementById('markdown-tab').classList.remove('is-active');
+    document.getElementById('preview-content').classList.remove('is-hidden');
+    document.getElementById('markdown-content').classList.add('is-hidden');
+});
+
+document.getElementById('markdown-tab').addEventListener('click', function() {
+    document.getElementById('markdown-tab').classList.add('is-active');
+    document.getElementById('preview-tab').classList.remove('is-active');
+    document.getElementById('markdown-content').classList.remove('is-hidden');
+    document.getElementById('preview-content').classList.add('is-hidden');
+});
+</script>

@@ -1,86 +1,154 @@
-{% extends "base.html" %}
+{% extends 'layout.html' %}
+
+{% block title %}Issue Draft Creator - ホーム{% endblock %}
 
 {% block content %}
-<div class="columns">
-    <div class="column is-8 is-offset-2">
-        <h1 class="title">Create New Issue</h1>
-        
-        <form hx-post="/api/requests"
-              hx-trigger="submit"
-              hx-target="#preview-area"
-              hx-swap="innerHTML"
-              hx-indicator="#loading">
-            
-            <div class="field">
-                <label class="label">Describe your issue in natural language</label>
-                <div class="control">
-                    <textarea name="user_input"
-                             class="textarea"
-                             placeholder="Enter your description here..."
-                             required></textarea>
-                </div>
-            </div>
-
-            <div class="field">
-                <div class="control">
-                    <button class="button is-primary" type="submit">
-                        Generate Issue
-                    </button>
-                </div>
-            </div>
-        </form>
-
-        <div id="loading" class="is-hidden">
-            <progress class="progress is-small is-primary" max="100">15%</progress>
+<div class="columns is-centered">
+    <div class="column is-10">
+        <!-- メインヘッダー -->
+        <div class="has-text-centered mb-6">
+            <h1 class="title is-1">Issue Draft Creator</h1>
+            <p class="subtitle is-4 mt-3">GitHubのIssue作成を効率化するツール</p>
         </div>
-
-        <div id="preview-area" class="mt-5"></div>
+        
+        <!-- Issue作成フォーム -->
+        <div class="box animate-fadeIn">
+            <h2 class="title is-4 mb-4">
+                <span class="icon-text">
+                    <span class="icon mr-2">
+                        <i class="fas fa-edit"></i>
+                    </span>
+                    <span>Issue作成</span>
+                </span>
+            </h2>
+            
+            <form action="/issues/create" method="post">
+                <div class="field">
+                    <label class="label">タイトル</label>
+                    <div class="control">
+                        <input class="input" type="text" name="title" placeholder="Issue のタイトルを入力してください" required>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">リポジトリ</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="repository" required>
+                                <option value="" disabled selected>リポジトリを選択してください</option>
+                                {% for repo in repositories %}
+                                <option value="{{ repo.id }}">{{ repo.owner }}/{{ repo.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">テンプレート</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="template" id="template-select">
+                                <option value="" disabled selected>テンプレートを選択してください</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="field">
+                    <label class="label">説明</label>
+                    <div class="control">
+                        <textarea class="textarea" name="description" placeholder="Issue の詳細を入力してください" rows="6"></textarea>
+                    </div>
+                </div>
+                
+                <div class="field is-grouped is-grouped-right">
+                    <div class="control">
+                        <button class="button is-primary" type="submit" formaction="/issues/draft" name="action" value="draft">
+                            <span class="icon mr-1">
+                                <i class="fas fa-save"></i>
+                            </span>
+                            <span>下書き保存</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <button class="button is-primary" type="submit" name="action" value="create">
+                            <span class="icon mr-1">
+                                <i class="fab fa-github"></i>
+                            </span>
+                            <span>Issue作成</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 最近の下書き -->
+        <div class="box animate-fadeIn mt-6">
+            <h3 class="title is-4 mb-4">
+                <span class="icon-text">
+                    <span class="icon mr-2">
+                        <i class="fas fa-history"></i>
+                    </span>
+                    <span>最近の下書き</span>
+                </span>
+            </h3>
+            
+            {% if recent_drafts %}
+            <div class="table-container">
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>タイトル</th>
+                            <th>リポジトリ</th>
+                            <th>最終更新</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for draft in recent_drafts %}
+                        <tr>
+                            <td>{{ draft.title }}</td>
+                            <td>{{ draft.repository.owner }}/{{ draft.repository.name }}</td>
+                            <td>{{ draft.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="buttons are-small">
+                                    <a href="/drafts/{{ draft.id }}/edit" class="button is-primary">
+                                        <span class="icon">
+                                            <i class="fas fa-edit"></i>
+                                        </span>
+                                    </a>
+                                    <button class="button is-danger" hx-delete="/api/drafts/{{ draft.id }}" hx-confirm="この下書きを削除しますか？">
+                                        <span class="icon">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="has-text-right mt-4">
+                <a href="/history" class="button is-light">
+                    <span class="icon-text">
+                        <span class="icon mr-1">
+                            <i class="fas fa-list"></i>
+                        </span>
+                        <span>すべての下書きを表示</span>
+                    </span>
+                </a>
+            </div>
+            {% else %}
+            <div class="notification is-light">
+                <p>下書きがありません。新しいIssueを作成してみましょう。</p>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    document.body.addEventListener('htmx:beforeRequest', function(evt) {
-        document.getElementById('loading').classList.remove('is-hidden');
-    });
-
-    document.body.addEventListener('htmx:afterRequest', function(evt) {
-        document.getElementById('loading').classList.add('is-hidden');
-    });
-
-    document.body.addEventListener('htmx:error', function(evt) {
-        const errorNotification = document.getElementById('error-notification');
-        const errorMessage = document.getElementById('error-message');
-        errorMessage.textContent = evt.detail.error;
-        errorNotification.classList.remove('is-hidden');
-    });
-
-    // 改行をHTMLの<br>タグに変換する関数
-    function convertNewlinesToBr() {
-        const previewArea = document.getElementById('preview-area');
-        if (!previewArea) return;
-
-        const storyElement = previewArea.querySelector('.content p');
-        const criteriaElement = previewArea.querySelector('.content .notification:nth-of-type(1)');
-        const requirementsElement = previewArea.querySelector('.content .notification:nth-of-type(2)');
-
-        if (storyElement) {
-            storyElement.innerHTML = storyElement.innerHTML.replace(/\n/g, '<br>');
-        }
-        if (criteriaElement) {
-            criteriaElement.innerHTML = criteriaElement.innerHTML.replace(/\n/g, '<br>');
-        }
-        if (requirementsElement) {
-            requirementsElement.innerHTML = requirementsElement.innerHTML.replace(/\n/g, '<br>');
-        }
-    }
-
-    // レスポンス受信後に改行変換を実行
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'preview-area') {
-            convertNewlinesToBr();
-        }
-    });
-</script>
 {% endblock %}

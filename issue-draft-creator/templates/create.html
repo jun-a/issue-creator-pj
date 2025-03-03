@@ -1,0 +1,86 @@
+{% extends 'layout.html' %}
+
+{% block title %}Issue Creator - 作成{% endblock %}
+
+{% block breadcrumb %}
+<li class="is-active"><a href="/create" aria-current="page">作成</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="columns">
+    <div class="column is-10 is-offset-1">
+        <h1 class="title is-2">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-plus-circle"></i>
+                </span>
+                <span>新規Issue作成</span>
+            </span>
+        </h1>
+        <h2 class="subtitle is-5">自然言語でIssueを素早く作成</h2>
+        
+        <div class="box">
+            <div class="field">
+                <label class="label">自然言語による要件入力</label>
+                <div class="control">
+                    <textarea id="user-input" class="textarea" placeholder="実装したい機能や解決したい課題を自由に記述してください。AIがIssue形式に変換します。" rows="5"></textarea>
+                </div>
+                <p class="help">例: ユーザーがログインできるようにしたい。メールアドレスとパスワードを入力してログインボタンを押すとダッシュボードに遷移する。</p>
+            </div>
+            
+            <div class="field is-grouped">
+                <div class="control">
+                    <button id="generate-btn" class="button is-primary"
+                            hx-post="/api/requests"
+                            hx-target="#result-container"
+                            hx-trigger="click"
+                            hx-include="#user-input"
+                            hx-indicator="#spinner">
+                        <span class="icon">
+                            <i class="fas fa-magic"></i>
+                        </span>
+                        <span>Issue生成</span>
+                    </button>
+                </div>
+                <div class="control">
+                    <button id="clear-btn" class="button is-light">
+                        <span class="icon">
+                            <i class="fas fa-undo"></i>
+                        </span>
+                        <span>クリア</span>
+                    </button>
+                </div>
+                <div id="spinner" class="htmx-indicator ml-3">
+                    <span class="icon">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span>生成中...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="result-container" class="mt-6">
+            <!-- 結果がここに表示されます -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // クリアボタンの機能
+    document.getElementById('clear-btn').addEventListener('click', function() {
+        document.getElementById('user-input').value = '';
+        document.getElementById('result-container').innerHTML = '';
+    });
+    
+    // テキストエリアの高さ自動調整
+    const textarea = document.getElementById('user-input');
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+});
+</script>
+{% endblock %}

@@ -323,11 +323,30 @@ def get_issue_by_id(issue_id: str) -> Optional[Issue]:
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     try:
+        # ダミーデータを追加（テスト用）
+        recent_drafts = storage.get_all_issues()[:3] if storage.get_all_issues() else []
+        templates_data = []  # 本来はテンプレート一覧を取得する処理
+        
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "page_title": "Issue Draft Creator"
+            "page_title": "Issue Draft Creator",
+            "recent_drafts": recent_drafts,
+            "templates": templates_data
         })
     except Exception as e:
+        # エラー発生時のログ出力
+        logger.error(f"Error in read_root: {e}")
+        return HTMLResponse("<html><body><h1>エラーが発生しました</h1><p>申し訳ありませんが、問題が発生しました。</p></body></html>")
+
+@app.get("/create", response_class=HTMLResponse)
+async def create_issue(request: Request):
+    try:
+        return templates.TemplateResponse("create.html", {
+            "request": request,
+            "page_title": "Issue作成"
+        })
+    except Exception as e:
+        logger.error(f"Error in create_issue: {e}")
         return templates.TemplateResponse("error.html", {
             "request": request,
             "message": str(e)
