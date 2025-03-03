@@ -1,3 +1,22 @@
+// HTMX拡張の定義
+htmx.defineExtension('issue-manager', {
+    init: function(api) {
+        // セッションストレージの初期化
+        if (!sessionStorage.getItem('issues')) {
+            sessionStorage.setItem('issues', '[]');
+        }
+    },
+
+    onEvent: function(name, evt) {
+        // イベントハンドリングをここに集約
+        if (name === "htmx:afterRequest") {
+            // リクエスト後の処理
+        } else if (name === "htmx:beforeRequest") {
+            // リクエスト前の処理
+        }
+    }
+});
+
 // ページ読み込み完了時の処理
 document.addEventListener('DOMContentLoaded', function() {
     // 通知メッセージの閉じるボタン
