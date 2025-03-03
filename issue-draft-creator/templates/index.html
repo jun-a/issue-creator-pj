@@ -55,5 +55,32 @@
         errorMessage.textContent = evt.detail.error;
         errorNotification.classList.remove('is-hidden');
     });
+
+    // 改行をHTMLの<br>タグに変換する関数
+    function convertNewlinesToBr() {
+        const previewArea = document.getElementById('preview-area');
+        if (!previewArea) return;
+
+        const storyElement = previewArea.querySelector('.content p');
+        const criteriaElement = previewArea.querySelector('.content .notification:nth-of-type(1)');
+        const requirementsElement = previewArea.querySelector('.content .notification:nth-of-type(2)');
+
+        if (storyElement) {
+            storyElement.innerHTML = storyElement.innerHTML.replace(/\n/g, '<br>');
+        }
+        if (criteriaElement) {
+            criteriaElement.innerHTML = criteriaElement.innerHTML.replace(/\n/g, '<br>');
+        }
+        if (requirementsElement) {
+            requirementsElement.innerHTML = requirementsElement.innerHTML.replace(/\n/g, '<br>');
+        }
+    }
+
+    // レスポンス受信後に改行変換を実行
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'preview-area') {
+            convertNewlinesToBr();
+        }
+    });
 </script>
 {% endblock %}

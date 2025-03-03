@@ -10,6 +10,9 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import logging
+import json
+import yaml  # 追加
+
 
 # .env設定の読み込み
 load_dotenv()
@@ -27,15 +30,89 @@ class Issue(BaseModel):
     requirements: Optional[str] = None
     created_at: str
 
+    class Config:
+        # JSONのシリアライズ時に改行を保持
+        json_encoders = {
+            str: lambda v: v.replace('\n', '\\n') if isinstance(v, str) else v
+        }
+
+    @classmethod
+    def parse_obj(cls, obj):
+        # 文字列フィールドの改行を復元
+        if isinstance(obj, dict):
+            for key in ['story', 'criteria', 'requirements']:
+                if key in obj and isinstance(obj[key], str):
+                    obj[key] = obj[key].replace('\\n', '\n')
+        return super().parse_obj(obj)
+
 class IssueResponse(BaseModel):
     status: str
     issue: Optional[Issue] = None
     message: Optional[str] = None
 
+# ストレージクラスの追加
+class LocalStorage:
+    def __init__(self, file_path: str = "issues.json"):
+        self.file_path = file_path
+        self.issues: Dict[str, Issue] = {}
+        self._load()
+
+    def _load(self):
+        """JSONファイルからissuesを読み込む"""
+        try:
+            if os.path.exists(self.file_path):
+                with open(self.file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.issues = {
+                        id: Issue(**issue_data)
+                        for id, issue_data in data.items()
+                    }
+        except Exception as e:
+            logger.error(f"Failed to load issues: {e}")
+            self.issues = {}
+
+    def _save(self):
+        """issuesをJSONファイルに保存"""
+        try:
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                json.dump(
+                    {id: issue.dict() for id, issue in self.issues.items()},
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str
+                )
+        except Exception as e:
+            logger.error(f"Failed to save issues: {e}")
+
+    def add_issue(self, issue: Issue):
+        """新しいissueを追加"""
+        self.issues[issue.id] = issue
+        self._save()
+
+    def get_issue(self, issue_id: str) -> Optional[Issue]:
+        """IDでissueを取得"""
+        return self.issues.get(issue_id)
+
+    def get_all_issues(self) -> List[Issue]:
+        """全てのissueを取得"""
+        return list(self.issues.values())
+
+# ストレージのインスタンス化
+storage = LocalStorage()
+
+# Jinja2フィルターの追加
+def format_list_items(text):
+    """テキストを行ごとに分割してリスト項目にフォーマット"""
+    if not text:
+        return []
+    return [line.strip() for line in text.split('\n') if line.strip()]
+
 # アプリケーションの初期化
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["format_list_items"] = format_list_items
 
 # ロガーの設定
 logger = logging.getLogger("uvicorn")
@@ -46,105 +123,81 @@ def create_issue_from_text(text: str) -> Issue:
     try:
         # Geminiに送るプロンプト
         prompt = f"""
-以下の要望から、GitHubのIssue形式に変換してください。
-必ず以下の厳密なフォーマットで出力してください。各セクションのヘッダーは変更しないでください：
+以下の要望から、GitHubのIssue形式に変換し、厳密にYAML形式で出力してください。
+以下の形式で出力してください：
 
-タイトル: [ここに50文字以内の簡潔な要約を記述]
+title: "ここにタイトルを記述"
+user_story:
+  - "ユーザーストーリーを記述"
+acceptance_criteria:
+  - "受け入れ基準1"
+  - "受け入れ基準2"
+technical_requirements:
+  - "技術要件1"
+  - "技術要件2"
 
-ユーザーストーリー:
-- [ここに「〜として、〜したい」形式で記述]
-
-受け入れ基準:
-- [ここに具体的な完了条件を箇条書きで記述]
-- [複数の条件を記述]
-
-技術要件:
-- [ここに実装に必要な技術的な要件を箇条書きで記述]
-- [複数の要件を記述]
-
-注意:
-- 各セクションのヘッダーは必ず上記の形式で記述してください
-- セクション間は必ず1行空けてください
-- 箇条書きは必ず「-」を使用してください
-- タイトルの後のコロンは半角を使用してください
-
-要望:
+この要望を上記フォーマットに変換してください：
 {text}
 """
-        logger.info("=== Gemini key ===")
-        logger.info(os.getenv('GOOGLE_API_KEY'))
         # Geminiで変換
         response = model.generate_content(prompt)
-        content = response.text
+        content = response.text.strip()
+        
+        # マークダウンフォーマットの除去
+        content = content.replace('```yaml', '').replace('```', '').strip()
         
         # デバッグ出力
-        logger.info("=== Gemini Response Debug ===")
-        logger.info(f"Response type: {type(response)}")
-        logger.info(f"Content text: {content}")
-        logger.info("=== Debug End ===")
+        logger.info("=== Cleaned Content ===")
+        logger.info(f"Content text:\n{content}")
         
-        # 応答を解析処理も改善
-        lines = content.split('\n')
-        title = ""
-        story = ""
-        criteria = ""
-        requirements = ""
-        
-        current_section = None
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
+        # YAMLとしてパース
+        try:
+            data = yaml.safe_load(content)
+            if not data:
+                raise HTTPException(status_code=400, detail="Empty YAML response")
             
-            # ヘッダー判定を厳密化
-            if line.startswith('タイトル:'):
-                current_section = 'title'
-                title = line.split(':', 1)[1].strip() if ':' in line else ""
-            elif line == 'ユーザーストーリー:':
-                current_section = 'story'
-            elif line == '受け入れ基準:':
-                current_section = 'criteria'
-            elif line == '技術要件:':
-                current_section = 'requirements'
-            # 箇条書き対応
-            elif line.startswith('- '):
-                line = line[2:].strip()
-                if current_section == 'story':
-                    story += line + '\n'
-                elif current_section == 'criteria':
-                    criteria += line + '\n'
-                elif current_section == 'requirements':
-                    requirements += line + '\n'
-
-        # デバッグ出力を追加
-        logger.info("=== Parsed Result ===")
-        logger.info(f"Title: [{title}]")
-        logger.info(f"Story: [{story}]")
-        logger.info(f"Criteria: [{criteria}]")
-        logger.info(f"Requirements: [{requirements}]")
-        logger.info("=== Parse End ===")
-        
-        return Issue(
-            id=str(uuid.uuid4()),
-            title=title.strip(),
-            story=story.strip(),
-            criteria=criteria.strip(),
-            requirements=requirements.strip(),
-            created_at=datetime.utcnow().isoformat()
-        )
+            # 必須フィールドの確認
+            required_fields = ['title', 'user_story', 'acceptance_criteria', 'technical_requirements']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            if missing_fields:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required fields: {', '.join(missing_fields)}"
+                )
+            
+            # データの取得と検証
+            title = str(data['title']).strip('"')
+            story = '\n'.join(data['user_story'])
+            criteria = '\n'.join(data['acceptance_criteria'])
+            requirements = '\n'.join(data['technical_requirements'])
+            
+            # デバッグ出力
+            logger.info("=== Parsed Result ===")
+            logger.info(f"Title: [{title}]")
+            logger.info(f"Story: [{story}]")
+            logger.info(f"Criteria: [{criteria}]")
+            logger.info(f"Requirements: [{requirements}]")
+            
+            return Issue(
+                id=str(uuid.uuid4()),
+                title=title,
+                story=story,
+                criteria=criteria,
+                requirements=requirements,
+                created_at=datetime.utcnow().isoformat()
+            )
+        except yaml.YAMLError as e:
+            logger.error(f"YAML parse error: {e}")
+            raise HTTPException(status_code=400, detail=f"Invalid YAML format: {e}")
+            
     except Exception as e:
+        logger.error(f"Error in create_issue_from_text: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 def get_issue_by_id(issue_id: str) -> Optional[Issue]:
     """IDに基づいてIssueを取得する"""
-    # Note: 実際の実装ではセッションストレージから取得
     try:
-        return Issue(
-            id=issue_id,
-            title="Sample Issue",
-            story="Sample story",
-            created_at=datetime.utcnow().isoformat()
-        )
+        return storage.get_issue(issue_id)
     except Exception as e:
         return None
 
@@ -162,20 +215,32 @@ async def read_root(request: Request):
             "message": str(e)
         })
 
-@app.post("/api/requests", response_class=JSONResponse)
+@app.post("/api/requests", response_class=HTMLResponse)
 async def api_requests(request: Request, user_input: str = Form(...)):
     try:
         issue = create_issue_from_text(user_input)
-        return IssueResponse(status="success", issue=issue)
+        storage.add_issue(issue)  # 作成したissueを保存
+        
+        # HTMLレスポンスにテンプレートを使用
+        return templates.TemplateResponse("partials/issue_preview.html", {
+            "request": request,
+            "issue": issue
+        })
     except HTTPException as e:
-        return IssueResponse(status="error", message=e.detail)
+        return templates.TemplateResponse("partials/error_message.html", {
+            "request": request,
+            "message": e.detail
+        })
     except Exception as e:
-        return IssueResponse(status="error", message=str(e))
+        return templates.TemplateResponse("partials/error_message.html", {
+            "request": request,
+            "message": str(e)
+        })
 
 @app.get("/preview/{issue_id}", response_class=HTMLResponse)
 async def preview_issue(request: Request, issue_id: str):
     try:
-        issue = get_issue_by_id(issue_id)
+        issue = storage.get_issue(issue_id)  # ストレージからissueを取得
         if not issue:
             raise HTTPException(status_code=404, detail="Issue not found")
         return templates.TemplateResponse("preview.html", {
@@ -196,8 +261,7 @@ async def preview_issue(request: Request, issue_id: str):
 @app.get("/history", response_class=HTMLResponse)
 async def read_history(request: Request):
     try:
-        # Note: 実際の実装ではセッションストレージから取得
-        issues: List[Issue] = []
+        issues = storage.get_all_issues()  # ストレージから全てのissueを取得
         return templates.TemplateResponse("history.html", {
             "request": request,
             "issues": issues

@@ -1,0 +1,31 @@
+<div class="box">
+    <h1 class="title">{{ issue.title }}</h1>
+    
+    <div class="content">
+        <h2 class="subtitle">User Story</h2>
+        <p>{{ issue.story }}</p>
+
+        {% if issue.criteria %}
+        <h2 class="subtitle">Acceptance Criteria</h2>
+        <div class="notification">
+            {{ issue.criteria }}
+        </div>
+        {% endif %}
+
+        {% if issue.requirements %}
+        <h2 class="subtitle">Technical Requirements</h2>
+        <div class="notification">
+            {{ issue.requirements }}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="field is-grouped mt-5">
+        <div class="control">
+            <a href="/preview/{{ issue.id }}" class="button is-info">Open Preview</a>
+        </div>
+        <div class="control">
+            <button class="button is-light" onclick="document.querySelector('form').reset()">Clear Form</button>
+        </div>
+    </div>
+</div>

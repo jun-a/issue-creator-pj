@@ -1,25 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ page_title|default("Issue Draft Creator") }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <script src="{{ url_for('static', path='htmx.min.js') }}"></script>
-    <script src="{{ url_for('static', path='function.js') }}"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/github-preview.css">
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    {% block head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar is-light" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
-            <a class="navbar-item" href="/">Issue Draft Creator</a>
+            <a class="navbar-item" href="/">
+                <strong>Issue Draft Creator</strong>
+            </a>
         </div>
         <div class="navbar-menu">
             <div class="navbar-end">
-                <a href="/" class="navbar-item">Home</a>
-                <a href="/history" class="navbar-item">History</a>
+                <a href="/" class="navbar-item">
+                    <span class="icon"><i class="fas fa-plus"></i></span>
+                    <span>Create</span>
+                </a>
+                <a href="/history" class="navbar-item">
+                    <span class="icon"><i class="fas fa-history"></i></span>
+                    <span>History</span>
+                </a>
             </div>
         </div>
     </nav>
+
+    <div id="error-notification" class="notification is-danger is-hidden" style="display:none">
+        <button class="delete" onclick="this.parentElement.classList.add('is-hidden')"></button>
+        <p id="error-message"></p>
+    </div>
 
     <section class="section">
         <div class="container">
@@ -27,10 +42,13 @@
         </div>
     </section>
 
-    <div id="error-notification" class="notification is-danger is-hidden">
-        <button class="delete"></button>
-        <p id="error-message"></p>
-    </div>
+    <footer class="footer">
+        <div class="content has-text-centered">
+            <p>
+                <strong>Issue Draft Creator</strong> - A tool to help create issue drafts
+            </p>
+        </div>
+    </footer>
 
     {% block scripts %}{% endblock %}
 </body>

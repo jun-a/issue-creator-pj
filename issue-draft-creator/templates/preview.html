@@ -9,21 +9,80 @@
             
             <div class="content">
                 <h2 class="subtitle">User Story</h2>
-                <p>{{ issue.story }}</p>
+                <p>{{ issue.story | replace('\n', '<br>') | safe }}</p>
 
                 {% if issue.criteria %}
                 <h2 class="subtitle">Acceptance Criteria</h2>
                 <div class="notification">
-                    {{ issue.criteria }}
+                    {{ issue.criteria | replace('\n', '<br>') | safe }}
                 </div>
                 {% endif %}
 
                 {% if issue.requirements %}
                 <h2 class="subtitle">Technical Requirements</h2>
                 <div class="notification">
-                    {{ issue.requirements }}
+                    {{ issue.requirements | replace('\n', '<br>') | safe }}
                 </div>
                 {% endif %}
+            </div>
+
+            <!-- GitHub Issue用のコピー機能 -->
+            <div class="mt-5 mb-5">
+                <h3 class="subtitle">GitHub Issue Format</h3>
+                
+                <div class="field is-grouped">
+                    <div class="control">
+                        <button class="button is-info" id="copy-title-btn">
+                            <span class="icon">
+                                <i class="fas fa-copy"></i>
+                            </span>
+                            <span>Copy Title</span>
+                        </button>
+                    </div>
+                    <div class="control">
+                        <button class="button is-success" id="copy-description-btn">
+                            <span class="icon">
+                                <i class="fas fa-copy"></i>
+                            </span>
+                            <span>Copy Description</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="copy-notification" class="notification is-success is-light mt-2" style="display: none;">
+                    <button class="delete" onclick="this.parentElement.style.display='none'"></button>
+                    <span id="copy-message"></span>
+                </div>
+
+                <div class="github-preview mt-3">
+                    <div id="github-title" class="github-title">{{ issue.title }}</div>
+                    <div id="github-description" class="github-description">
+                        <h3>User Story</h3>
+                        <p>{{ issue.story }}</p>
+                        
+                        {% if issue.criteria %}
+                        <h3>Acceptance Criteria</h3>
+                        <ul>
+                            {% for criterion in issue.criteria.split('\n') %}
+                                {% if criterion.strip() %}
+                                <li>{{ criterion }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        
+                        {% if issue.requirements %}
+                        <h3>Technical Requirements</h3>
+                        <ul>
+                            {% for req in issue.requirements.split('\n') %}
+                                {% if req.strip() %}
+                                <li>{{ req }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
             <div class="field is-grouped mt-5">
@@ -59,6 +118,41 @@
         const errorMessage = document.getElementById('error-message');
         errorMessage.textContent = evt.detail.error;
         errorNotification.classList.remove('is-hidden');
+    });
+
+    // コピー機能
+    document.addEventListener('DOMContentLoaded', function() {
+        const copyTitleBtn = document.getElementById('copy-title-btn');
+        const copyDescriptionBtn = document.getElementById('copy-description-btn');
+        const copyNotification = document.getElementById('copy-notification');
+        const copyMessage = document.getElementById('copy-message');
+        
+        copyTitleBtn?.addEventListener('click', function() {
+            const title = document.getElementById('github-title').innerText;
+            copyToClipboard(title, 'Title copied to clipboard!');
+        });
+        
+        copyDescriptionBtn?.addEventListener('click', function() {
+            const description = document.getElementById('github-description').innerText;
+            copyToClipboard(description, 'Description copied to clipboard!');
+        });
+        
+        function copyToClipboard(text, message) {
+            navigator.clipboard.writeText(text).then(
+                function() {
+                    copyMessage.textContent = message;
+                    copyNotification.style.display = 'block';
+                    setTimeout(() => {
+                        copyNotification.style.display = 'none';
+                    }, 3000);
+                },
+                function(err) {
+                    copyMessage.textContent = 'Failed to copy: ' + err;
+                    copyNotification.className = 'notification is-danger is-light mt-2';
+                    copyNotification.style.display = 'block';
+                }
+            );
+        }
     });
 </script>
 {% endblock %}
