@@ -136,6 +136,11 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* ホバー時にシャドウ強調 */
         }
         
+        /* ボタン内のアイコンを白色に */
+        .button.is-primary .icon {
+            color: white !important;  /* !important を追加して優先度を上げる */
+        }
+
         /* コンテナ */
         .container {
             max-width: 1200px;
@@ -272,7 +277,7 @@
         
         /* アイコンを明るく */
         .icon {
-            color: var (--text-primary);
+            color: inherit;  /* 親要素の色を継承 */
         }
         
         .navbar-item .icon {
@@ -282,7 +287,7 @@
         
         /* ボックス内のアイコンは鮮やかに */
         .box .icon {
-            color: var(--primary-color);
+            color: var(--primary-color);  /* ボックス内のアイコンのみ青色に */
         }
         
         /* アイコンのホバーエフェクト */
@@ -320,7 +325,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+    <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
             <a class="navbar-item" href="/">
                 <strong>Issue Draft Creator</strong>
