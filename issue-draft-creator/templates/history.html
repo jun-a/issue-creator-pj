@@ -7,44 +7,59 @@
 {% endblock %}
 
 {% block content %}
-<div class="columns">
-    <div class="column is-10 is-offset-1">
-        <h1 class="title is-2">Issue 履歴</h1>
-        <h2 class="subtitle is-5">作成したIssueの一覧</h2>
+<div class="columns is-centered">
+    <div class="column is-10">
+        <!-- メインヘッダー -->
+        <div class="has-text-centered mb-6">
+            <h1 class="title is-1">履歴</h1>
+            <p class="subtitle is-4 mt-3">作成したIssueの履歴を管理</p>
+        </div>
 
         {% if issues %}
-        <div class="box">
-            <table class="table is-striped is-hoverable is-fullwidth">
-                <thead>
-                    <tr>
-                        <th>タイトル</th>
-                        <th>作成日時</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for issue in issues %}
-                    <tr>
-                        <td>
-                            <a href="/preview/{{ issue.id }}">
-                                {{ issue.title or "無題" }}
-                            </a>
-                        </td>
-                        <td>{{ issue.created_at[:16].replace('T', ' ') }}</td>
-                        <td>
-                            <div class="buttons are-small">
-                                <a href="/preview/{{ issue.id }}" class="button is-primary">
-                                    <span class="icon">
-                                        <i class="fas fa-eye"></i>
-                                    </span>
-                                    <span>表示</span>
+        <!-- 履歴セクション -->
+        <div class="box animate-fadeIn">
+            <h2 class="title is-4 mb-4">
+                <span class="icon-text">
+                    <span class="icon mr-2">
+                        <i class="fas fa-history"></i>
+                    </span>
+                    <span>Issue履歴</span>
+                </span>
+            </h2>
+
+            <div class="table-container">
+                <table class="table is-striped is-hoverable is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>タイトル</th>
+                            <th>作成日時</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issues %}
+                        <tr>
+                            <td>
+                                <a href="/preview/{{ issue.id }}">
+                                    {{ issue.title or "無題" }}
                                 </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td>{{ issue.created_at[:16].replace('T', ' ') }}</td>
+                            <td>
+                                <div class="buttons are-small">
+                                    <a href="/preview/{{ issue.id }}" class="button is-primary">
+                                        <span class="icon">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                        <span>表示</span>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% else %}
         <div class="notification is-warning is-light">
