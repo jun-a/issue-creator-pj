@@ -147,6 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
 document.body.addEventListener('htmx:afterSwap', function(event) {
     // タブ切り替え機能の再初期化
     initializeTabs();
+    // 通知の初期化
+    initializeNotifications();
 });
 
 // タブ切り替え機能
@@ -174,3 +176,35 @@ function initializeTabs() {
         });
     });
 }
+
+// ナビゲーションバーの制御
+function initializeNavbar() {
+    const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+    if ($navbarBurgers.length > 0) {
+        $navbarBurgers.forEach(el => {
+            el.addEventListener('click', () => {
+                const target = el.dataset.target;
+                const $target = document.getElementById(target);
+                el.classList.toggle('is-active');
+                $target.classList.toggle('is-active');
+            });
+        });
+    }
+}
+
+// 通知の制御
+function initializeNotifications() {
+    (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+        const $notification = $delete.parentNode;
+        $delete.addEventListener('click', () => {
+            $notification.parentNode.removeChild($notification);
+        });
+    });
+}
+
+// ページ読み込み時の初期化
+document.addEventListener('DOMContentLoaded', () => {
+    initializeNavbar();
+    initializeNotifications();
+    initializeTabs();
+});
