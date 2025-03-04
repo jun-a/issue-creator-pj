@@ -1,3 +1,75 @@
+class IssueStorage {
+    constructor() {
+        this.storage = localStorage;
+        this.key = 'issues';
+    }
+
+    addIssue(issue) {
+        const issues = this.getAllIssues();
+        issues[issue.id] = issue;
+        this.storage.setItem(this.key, JSON.stringify(issues));
+    }
+
+    getIssue(id) {
+        const issues = this.getAllIssues();
+        return issues[id];
+    }
+
+    getAllIssues() {
+        const data = this.storage.getItem(this.key);
+        return data ? JSON.parse(data) : {};
+    }
+
+    deleteIssue(id) {
+        const issues = this.getAllIssues();
+        if (issues[id]) {
+            delete issues[id];
+            this.storage.setItem(this.key, JSON.stringify(issues));
+            return true;
+        }
+        return false;
+    }
+}
+
+// グローバルインスタンスの作成
+window.issueStorage = new IssueStorage();
+
+class RepoStorage {
+    constructor() {
+        this.storage = localStorage;
+        this.key = 'repositories';
+    }
+
+    addRepo(repo) {
+        const repos = this.getAllRepos();
+        repos[repo.id] = repo;
+        this.storage.setItem(this.key, JSON.stringify(repos));
+    }
+
+    getRepo(id) {
+        const repos = this.getAllRepos();
+        return repos[id];
+    }
+
+    getAllRepos() {
+        const data = this.storage.getItem(this.key);
+        return data ? JSON.parse(data) : {};
+    }
+
+    deleteRepo(id) {
+        const repos = this.getAllRepos();
+        if (repos[id]) {
+            delete repos[id];
+            this.storage.setItem(this.key, JSON.stringify(repos));
+            return true;
+        }
+        return false;
+    }
+}
+
+// グローバルインスタンスの作成
+window.repoStorage = new RepoStorage();
+
 // HTMX拡張の定義
 htmx.defineExtension('issue-manager', {
     init: function(api) {
@@ -14,6 +86,37 @@ htmx.defineExtension('issue-manager', {
         } else if (name === "htmx:beforeRequest") {
             // リクエスト前の処理
         }
+    }
+});
+
+// ローディング表示の最小時間を設定
+const MIN_LOADING_TIME = 3000; // 3秒
+
+// ローディング状態の管理
+let loadingStartTime;
+let loadingTimer;
+
+document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    if (evt.detail.target.id === 'issue-preview') {
+        const loadingIndicator = document.getElementById('loading-indicator');
+        loadingIndicator.classList.remove('is-hidden');
+        loadingStartTime = Date.now();
+    }
+});
+
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    if (evt.detail.target.id === 'issue-preview') {
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const elapsedTime = Date.now() - loadingStartTime;
+        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
+        // 最小表示時間を確保するため、必要に応じて遅延を追加
+        setTimeout(() => {
+            loadingIndicator.classList.add('is-hidden');
+            if (evt.detail.successful) {
+                // 成功時の処理（必要に応じて）
+            }
+        }, remainingTime);
     }
 });
 

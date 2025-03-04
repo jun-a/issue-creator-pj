@@ -1,4 +1,12 @@
-<div class="box">
+<!-- ローディングインジケーター -->
+<div id="loading-indicator" class="has-text-centered py-6 is-hidden">
+    <span class="icon is-large">
+        <i class="fas fa-spinner fa-pulse fa-2x"></i>
+    </span>
+    <p class="mt-3">Issue を生成中...</p>
+</div>
+
+<div class="box" data-issue="{{ issue.json() | safe }}">
     <h3 class="title is-5">{{ issue.title }}</h3>
     
     <div class="tabs">
@@ -60,6 +68,14 @@
     </div>
 </div>
 
+{% if use_local_storage %}
+<script>
+    // Issueをローカルストレージに保存
+    const issue = {{ issue.json() | safe }};
+    window.issueStorage.addIssue(issue);
+</script>
+{% endif %}
+
 <script>
     // タブ切り替え
     document.querySelectorAll('[data-tab]').forEach(tab => {
@@ -97,5 +113,20 @@
             .catch(err => {
                 console.error('クリップボードへのコピーに失敗しました', err);
             });
+    });
+
+    // HTMXイベントハンドラ
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        if (evt.detail.target.id === 'issue-preview') {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            loadingIndicator.classList.remove('is-hidden');
+        }
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.target.id === 'issue-preview') {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            loadingIndicator.classList.add('is-hidden');
+        }
     });
 </script>

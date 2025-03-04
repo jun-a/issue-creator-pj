@@ -1,3 +1,4 @@
 .venv
 *.pyc
-issue-draft-creator/.env
+.env
+.vercel

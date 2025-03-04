@@ -358,22 +358,16 @@ async def create_issue(request: Request):
 async def api_requests(request: Request, user_input: str = Form(...)):
     try:
         issue = create_issue_from_text(user_input)
-        storage.add_issue(issue)  # 作成したissueを保存
         
-        # HTMLレスポンスにテンプレートを使用
         return templates.TemplateResponse("partials/issue_preview.html", {
             "request": request,
-            "issue": issue
+            "issue": issue,
+            "use_local_storage": True  # フラグを追加
         })
     except HTTPException as e:
         return templates.TemplateResponse("partials/error_message.html", {
             "request": request,
             "message": e.detail
-        })
-    except Exception as e:
-        return templates.TemplateResponse("partials/error_message.html", {
-            "request": request,
-            "message": str(e)
         })
 
 @app.get("/preview/{issue_id}", response_class=HTMLResponse)
@@ -401,18 +395,9 @@ async def preview_issue(request: Request, issue_id: str):
 
 @app.get("/history", response_class=HTMLResponse)
 async def read_history(request: Request):
-    try:
-        sorted_issues = sorted(storage.get_all_issues(), key=lambda x: x.created_at, reverse=True)  # some_attributeを適切な属性に置き換えてください
-        issues = sorted_issues if sorted_issues else []
-        return templates.TemplateResponse("history.html", {
-            "request": request,
-            "issues": issues
-        })
-    except Exception as e:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "message": str(e)
-        })
+    return templates.TemplateResponse("history.html", {
+        "request": request
+    })
 
 # GitHub関連エンドポイント
 @app.get("/settings", response_class=HTMLResponse)
@@ -429,6 +414,12 @@ async def settings_page(request: Request):
             "request": request,
             "message": str(e)
         })
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings(request: Request):
+    return templates.TemplateResponse("settings.html", {
+        "request": request
+    })
 
 @app.post("/api/repos", response_class=HTMLResponse)
 async def add_repository(request: Request, 
