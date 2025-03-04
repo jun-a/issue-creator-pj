@@ -81,7 +81,7 @@ class ComponentManager {
         });
     }
 
-    showNotification(message, type = 'info') {
+    showNotification(message, type = 'info', targetElement = null) {
         const notification = document.createElement('div');
         notification.className = `notification is-${type}`;
         notification.innerHTML = `
@@ -90,7 +90,13 @@ class ComponentManager {
         `;
         notification.querySelector('.delete').addEventListener('click',
             () => this.hideNotification(notification));
-        document.body.appendChild(notification);
+
+        const insertTarget = document.getElementById('issue-preview');
+        if (insertTarget) {
+            insertTarget.insertAdjacentElement('afterend', notification);
+        } else {
+            document.body.appendChild(notification);
+        }
     }
 
     hideNotification(element) {
@@ -131,7 +137,7 @@ class ComponentManager {
                 const markdown = document.querySelector('#tab-markdown code').textContent;
                 navigator.clipboard.writeText(markdown)
                     .then(() => {
-                        this.showNotification('Markdownをコピーしました', 'success');
+                        this.showNotification('Markdownをコピーしました', 'success', copyButton);
                     })
                     .catch(err => {
                         this.showNotification('コピーに失敗しました: ' + err, 'error');
