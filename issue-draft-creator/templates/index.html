@@ -22,7 +22,9 @@
                 </span>
             </h2>
             
-            <form id="issue-form" hx-post="/api/requests" hx-target="#issue-preview">
+            <form id="issue-form" hx-post="/api/requests" 
+                  hx-target="#issue-preview"
+                  hx-indicator="#loading-overlay">
                 <div class="field">
                     <label class="label">やりたいことを自由に記述してください</label>
                     <div class="control">

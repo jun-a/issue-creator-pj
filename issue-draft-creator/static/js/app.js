@@ -97,27 +97,37 @@ let loadingStartTime;
 let loadingTimer;
 
 document.body.addEventListener('htmx:beforeRequest', function(evt) {
-    if (evt.detail.target.id === 'issue-preview') {
-        const loadingIndicator = document.getElementById('loading-indicator');
-        loadingIndicator.classList.remove('is-hidden');
-        loadingStartTime = Date.now();
-    }
+    // issue-previewの条件を削除し、すべてのリクエストに対応
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'loading-overlay';
+    loadingOverlay.innerHTML = `
+        <div class="loading-content">
+            <span class="icon is-large">
+                <i class="fas fa-spinner fa-pulse fa-2x"></i>
+            </span>
+            <p class="mt-3">Issue を生成中...</p>
+        </div>
+    `;
+    document.body.appendChild(loadingOverlay);
+    document.body.classList.add('is-loading');
+    loadingStartTime = Date.now();
 });
 
 document.body.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.target.id === 'issue-preview') {
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const elapsedTime = Date.now() - loadingStartTime;
-        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+    // issue-previewの条件を削除し、すべてのリクエストに対応
+    const elapsedTime = Date.now() - loadingStartTime;
+    const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
 
-        // 最小表示時間を確保するため、必要に応じて遅延を追加
-        setTimeout(() => {
-            loadingIndicator.classList.add('is-hidden');
-            if (evt.detail.successful) {
-                // 成功時の処理（必要に応じて）
-            }
-        }, remainingTime);
-    }
+    setTimeout(() => {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            document.body.classList.remove('is-loading');
+            loadingOverlay.addEventListener('transitionend', () => {
+                loadingOverlay.remove();
+            });
+            loadingOverlay.classList.add('is-hiding');
+        }
+    }, remainingTime);
 });
 
 // ページ読み込み完了時の処理
