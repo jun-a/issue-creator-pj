@@ -73,12 +73,25 @@ class ComponentManager {
         this.initializeNavbar();
         this.initializeMarkdownCopy();
         this.initializeDropdowns();
+        this.initializeErrorNotification();
     }
 
     initializeNotifications() {
         document.querySelectorAll('.notification .delete').forEach(button => {
             button.addEventListener('click', () => this.hideNotification(button.parentNode));
         });
+    }
+
+    initializeErrorNotification() {
+        const errorNotification = document.getElementById('error-notification');
+        if (errorNotification) {
+            const deleteButton = errorNotification.querySelector('.delete');
+            if (deleteButton) {
+                deleteButton.addEventListener('click', () => {
+                    errorNotification.classList.add('is-hidden');
+                });
+            }
+        }
     }
 
     showNotification(message, type = 'info', targetElement = null) {
@@ -308,7 +321,143 @@ class PageManager {
     }
 
     initializePreviewPage() {
+        const issuePreviewContainer = document.getElementById('issue-preview');
+        if (!issuePreviewContainer) return;
+
+        // URLからissue_idを取得
+        const pathParts = window.location.pathname.split('/');
+        const issueId = pathParts[pathParts.length - 1];
+        
+        // issueデータの取得と表示
+        const issue = window.storage.getIssue(issueId);
+        const repos = Object.values(window.storage.getAllRepos());
+        
+        if (!issue) {
+            window.components.showNotification('Issueが見つかりません', 'error');
+            window.location.href = '/history';
+            return;
+        }
+
+        function nl2br(text) {
+            if (!text) return '';
+            return text.replace(/\n/g, '<br>');
+        }
+
+        // プレビューの生成
+        issuePreviewContainer.innerHTML = `
+            <div class="column is-10 is-offset-1">
+                <div class="message box animate-fadeIn">
+                    <div class="message-header">
+                        <p>${issue.title}</p>
+                    </div>
+                    <div class="message-body">
+                        <div class="tabs is-boxed">
+                            <ul>
+                                <li class="is-active" data-tab="preview">
+                                    <a>
+                                        <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                                        <span>プレビュー</span>
+                                    </a>
+                                </li>
+                                <li data-tab="markdown">
+                                    <a>
+                                        <span class="icon is-small"><i class="fas fa-code"></i></span>
+                                        <span>Markdown</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div id="tab-preview" class="tab-content content markdown-preview">
+                            <h3>User Story</h3>
+                            <p>${nl2br(issue.story)}</p>
+                            
+                            ${issue.criteria ? `
+                                <h3>Acceptance Criteria</h3>
+                                <ul>
+                                    ${issue.criteria.split('\n')
+                                        .filter(item => item.trim())
+                                        .map(item => `<li>${nl2br(item.trim())}</li>`)
+                                        .join('')}
+                                </ul>
+                            ` : ''}
+                            
+                            ${issue.requirements ? `
+                                <h3>Technical Requirements</h3>
+                                <ul>
+                                    ${issue.requirements.split('\n')
+                                        .filter(item => item.trim())
+                                        .map(item => `<li>${nl2br(item.trim())}</li>`)
+                                        .join('')}
+                                </ul>
+                            ` : ''}
+                        </div>
+                        
+                        <div id="tab-markdown" class="tab-content is-hidden">
+                            <pre><code class="language-markdown">${window.components.convertIssueToMarkdown(issue)}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="field is-grouped mt-5">
+                    <div class="control">
+                        <a href="/history" class="button is-light">
+                            <span class="icon">
+                                <i class="fas fa-arrow-left"></i>
+                            </span>
+                            <span>履歴に戻る</span>
+                        </a>
+                    </div>
+                    
+                    ${repos.length > 0 ? `
+                        <div class="control">
+                            <div class="dropdown">
+                                <div class="dropdown-trigger">
+                                    <button class="button is-primary" aria-haspopup="true" aria-controls="dropdown-menu">
+                                        <span class="icon">
+                                            <i class="fab fa-github"></i>
+                                        </span>
+                                        <span>GitHubに投稿</span>
+                                        <span class="icon is-small">
+                                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                                    <div class="dropdown-content">
+                                        ${repos.map(repo => `
+                                            <a href="${repo.url}/issues/new?title=${encodeURIComponent(issue.title)}&body=${encodeURIComponent(window.components.convertIssueToMarkdown(issue))}"
+                                               class="dropdown-item" target="_blank">
+                                                ${repo.owner}/${repo.name}
+                                            </a>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="control">
+                        <button class="button is-info" id="copy-markdown-btn">
+                            <span class="icon">
+                                <i class="fas fa-copy"></i>
+                            </span>
+                            <span>Markdownをコピー</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // コンポーネントの初期化
         window.components.initializeTabs();
+        window.components.initializeMarkdownCopy();
+        window.components.initializeDropdowns();
+
+        // シンタックスハイライトの適用
+        if (window.hljs) {
+            window.hljs.highlightAll();
+        }
     }
 
     initializeSettingsPage() {
