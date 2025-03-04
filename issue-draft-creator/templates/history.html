@@ -44,37 +44,4 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const issues = Object.values(window.issueStorage.getAllIssues())
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    const container = document.getElementById('issues-container');
-    if (issues.length > 0) {
-        container.innerHTML = issues.map(issue => `
-            <tr>
-                <td>${issue.title}</td>
-                <td>${new Date(issue.created_at).toLocaleString('ja-JP')}</td>
-                <td>
-                    <div class="buttons are-small">
-                        <a href="/preview/${issue.id}" class="button is-primary">
-                            <span class="icon">
-                                <i class="fas fa-eye"></i>
-                            </span>
-                        </a>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-    } else {
-        container.innerHTML = `
-            <tr>
-                <td colspan="3" class="has-text-centered">
-                    作成されたIssueはありません
-                </td>
-            </tr>
-        `;
-    }
-});
-</script>
 {% endblock %}

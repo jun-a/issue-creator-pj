@@ -66,21 +66,4 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // クリアボタンの機能
-    document.getElementById('clear-btn').addEventListener('click', function() {
-        document.getElementById('user-input').value = '';
-        document.getElementById('result-container').innerHTML = '';
-    });
-    
-    // テキストエリアの高さ自動調整
-    const textarea = document.getElementById('user-input');
-    textarea.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
-});
-</script>
 {% endblock %}
