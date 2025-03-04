@@ -160,14 +160,12 @@ tr:hover {
 
 /* ===== Markdownプレビュー ===== */
 .markdown-preview {
-    background-color: var(--surface-color);
     backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
     border-radius: var(--rounded-lg);
     padding: 1.25rem;
     overflow: auto;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    box-shadow: var(--shadow);
     color: var(--text-dark);
 }
 
@@ -598,4 +596,8 @@ a:hover .icon {
 @keyframes slideDown {
     from { transform: translateY(-100%); }
     to { transform: translateY(0); }
+}
+
+.message {
+    background-color: var(--text-primary);
 }
