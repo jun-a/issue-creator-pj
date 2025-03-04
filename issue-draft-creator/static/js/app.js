@@ -244,22 +244,7 @@ class EventManager {
 
         // データの保存処理
         if (evt.detail && evt.detail.elt) {
-            try {
-                const issueData = evt.detail.elt.querySelector('[data-auto-store="true"]');
-                if (issueData && issueData.dataset.issue) {
-                    const issue = JSON.parse(issueData.dataset.issue);
-                    if (issue && issue.id && issue.title && issue.story) {
-                        window.storage.addIssue(issue);
-                        console.log('Issue saved successfully:', issue);
-                    } else {
-                        console.error('Invalid issue data structure:', issue);
-                        window.components.showNotification('Issue データの形式が不正です', 'error');
-                    }
-                }
-            } catch (e) {
-                console.error('データの処理中にエラーが発生しました:', e);
-                window.components.showNotification('データの処理中にエラーが発生しました', 'error');
-            }
+            this.saveIssueData(evt.detail.elt);
         }
 
         setTimeout(() => {
@@ -272,6 +257,50 @@ class EventManager {
                 loadingOverlay.classList.add('is-hiding');
             }
         }, remainingTime);
+    }
+
+    saveIssueData(element) {
+        try {
+            const issueData = element.querySelector('[data-auto-store="true"]');
+            if (!issueData || !issueData.dataset.issue) {
+                console.log('Issue data not found in response');
+                return;
+            }
+
+            const issue = JSON.parse(issueData.dataset.issue);
+            if (!this.validateIssueData(issue)) {
+                window.components.showNotification('Issue データの形式が不正です', 'error');
+                return;
+            }
+
+            // 重複チェック
+            const existingIssues = window.storage.getAllIssues();
+            if (existingIssues[issue.id]) {
+                console.log('Issue already exists:', issue.id);
+                return;
+            }
+
+            // 保存処理
+            window.storage.addIssue(issue);
+            console.log('Issue saved successfully:', issue);
+            window.components.showNotification('Issue を保存しました', 'success');
+        } catch (e) {
+            console.error('データの処理中にエラーが発生しました:', e);
+            window.components.showNotification('データの処理中にエラーが発生しました', 'error');
+        }
+    }
+
+    validateIssueData(issue) {
+        return Boolean(
+            issue &&
+            typeof issue === 'object' &&
+            issue.id &&
+            typeof issue.id === 'string' &&
+            issue.title &&
+            typeof issue.title === 'string' &&
+            issue.story &&
+            typeof issue.story === 'string'
+        );
     }
 
     handleAfterSwap(evt) {
@@ -330,12 +359,15 @@ class PageManager {
         
         // issueデータの取得と表示
         const issue = window.storage.getIssue(issueId);
-        const repos = Object.values(window.storage.getAllRepos());
-        
         if (!issue) {
             window.components.showNotification('Issueが見つかりません', 'error');
             window.location.href = '/history';
             return;
+        }
+
+        const repos = this.getValidRepositories();
+        if (repos.length === 0) {
+            window.components.showNotification('GitHubリポジトリが設定されていません', 'warning');
         }
 
         function nl2br(text) {
@@ -458,6 +490,18 @@ class PageManager {
         if (window.hljs) {
             window.hljs.highlightAll();
         }
+    }
+
+    getValidRepositories() {
+        const repos = Object.values(window.storage.getAllRepos());
+        return repos.filter(repo => {
+            return repo &&
+                   typeof repo === 'object' &&
+                   repo.name &&
+                   repo.owner &&
+                   repo.url &&
+                   repo.url.startsWith('https://github.com/');
+        });
     }
 
     initializeSettingsPage() {

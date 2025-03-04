@@ -575,9 +575,25 @@ body.is-loading {
     color: var(--primary-color);
 }
 
+/* ボタン内のアイコン */
+.button .icon {
+    color: #fff;
+}
+
+.button.is-light .icon {
+    color: var(--text-dark);
+}
+
 a:hover .icon {
     transform: scale(1.1);
     transition: transform 0.2s ease;
+}
+
+/* アイコンの色修正 */
+.button.is-primary .icon,
+.button.is-info .icon,
+.button.is-danger .icon {
+    color: #fff !important;
 }
 
 /* Notification styles */
