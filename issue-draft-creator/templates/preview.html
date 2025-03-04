@@ -14,108 +14,126 @@
 {% endblock %}
 
 {% block content %}
-<div class="columns">
-    <div class="column is-10 is-offset-1">
-        <div class="message box animate-fadeIn">
-            <div class="message-header">
-                <p>{{ issue.title }}</p>
-            </div>
-            <div class="message-body">
-                <div class="tabs is-boxed">
-                    <ul>
-                        <li class="is-active" id="preview-tab">
-                            <a>
-                                <span class="icon is-small"><i class="fas fa-eye"></i></span>
-                                <span>プレビュー</span>
-                            </a>
-                        </li>
-                        <li id="markdown-tab">
-                            <a>
-                                <span class="icon is-small"><i class="fas fa-code"></i></span>
-                                <span>Markdown</span>
-                            </a>
-                        </li>
-                    </ul>
+<div id="issue-preview" class="columns">
+    <!-- JavaScriptでローカルストレージからデータを読み込んで表示 -->
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const issueId = '{{ issue_id }}';
+    const issue = window.storage.getIssue(issueId);
+    const repos = Object.values(window.storage.getAllRepos());
+    
+    if (!issue) {
+        window.components.showNotification('Issueが見つかりません', 'error');
+        window.location.href = '/history';
+        return;
+    }
+
+    const container = document.getElementById('issue-preview');
+    container.innerHTML = `
+        <div class="column is-10 is-offset-1">
+            <div class="message box animate-fadeIn">
+                <div class="message-header">
+                    <p>${issue.title}</p>
                 </div>
-                
-                <div id="preview-content" class="content markdown-preview">
-                    <h3>User Story</h3>
-                    <p>{{ issue.story }}</p>
+                <div class="message-body">
+                    <div class="tabs is-boxed">
+                        <ul>
+                            <li class="is-active" data-tab="preview">
+                                <a>
+                                    <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                                    <span>プレビュー</span>
+                                </a>
+                            </li>
+                            <li data-tab="markdown">
+                                <a>
+                                    <span class="icon is-small"><i class="fas fa-code"></i></span>
+                                    <span>Markdown</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                     
-                    {% if issue.criteria %}
-                    <h3>Acceptance Criteria</h3>
-                    <ul>
-                        {% for item in issue.criteria|format_list_items %}
-                        <li>{{ item }}</li>
-                        {% endfor %}
-                    </ul>
-                    {% endif %}
+                    <div id="tab-preview" class="tab-content content markdown-preview">
+                        <h3>User Story</h3>
+                        <p>${issue.story}</p>
+                        
+                        ${issue.criteria ? `
+                            <h3>Acceptance Criteria</h3>
+                            <ul>
+                                ${issue.criteria.split('\n').map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                        
+                        ${issue.requirements ? `
+                            <h3>Technical Requirements</h3>
+                            <ul>
+                                ${issue.requirements.split('\n').map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                    </div>
                     
-                    {% if issue.requirements %}
-                    <h3>Technical Requirements</h3>
-                    <ul>
-                        {% for item in issue.requirements|format_list_items %}
-                        <li>{{ item }}</li>
-                        {% endfor %}
-                    </ul>
-                    {% endif %}
+                    <div id="tab-markdown" class="tab-content is-hidden">
+                        <pre><code class="language-markdown">${window.components.convertIssueToMarkdown(issue)}</code></pre>
+                    </div>
                 </div>
-                
-                <div id="markdown-content" class="is-hidden">
-                    <pre><code class="language-markdown">{{ issue|to_markdown }}</code></pre>
-                </div>
-            </div>
-        </div>
-        
-        <div class="field is-grouped mt-5">
-            <div class="control">
-                <a href="/history" class="button is-light">
-                    <span class="icon">
-                        <i class="fas fa-arrow-left"></i>
-                    </span>
-                    <span>履歴に戻る</span>
-                </a>
             </div>
             
-            {% if repos %}
-            <div class="control">
-                <div class="dropdown">
-                    <div class="dropdown-trigger">
-                        <button class="button is-primary" aria-haspopup="true" aria-controls="dropdown-menu">
-                            <span class="icon">
-                                <i class="fab fa-github"></i>
-                            </span>
-                            <span>GitHubに投稿</span>
-                            <span class="icon is-small">
-                                <i class="fas fa-angle-down" aria-hidden="true"></i>
-                            </span>
-                        </button>
-                    </div>
-                    <div class="dropdown-menu" id="dropdown-menu" role="menu">
-                        <div class="dropdown-content">
-                            {% for repo in repos %}
-                            <a href="{{ repo.issues_url }}?title={{ issue.title|urlencode }}&body={{ issue|to_markdown|urlencode }}" 
-                               class="dropdown-item" target="_blank">
-                                {{ repo.full_name }}
-                            </a>
-                            {% endfor %}
+            <div class="field is-grouped mt-5">
+                <div class="control">
+                    <a href="/history" class="button is-light">
+                        <span class="icon">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                        <span>履歴に戻る</span>
+                    </a>
+                </div>
+                
+                ${repos.length > 0 ? `
+                    <div class="control">
+                        <div class="dropdown">
+                            <div class="dropdown-trigger">
+                                <button class="button is-primary" aria-haspopup="true" aria-controls="dropdown-menu">
+                                    <span class="icon">
+                                        <i class="fab fa-github"></i>
+                                    </span>
+                                    <span>GitHubに投稿</span>
+                                    <span class="icon is-small">
+                                        <i class="fas fa-angle-down" aria-hidden="true"></i>
+                                    </span>
+                                </button>
+                            </div>
+                            <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                                <div class="dropdown-content">
+                                    ${repos.map(repo => `
+                                        <a href="${repo.url}/issues/new?title=${encodeURIComponent(issue.title)}&body=${encodeURIComponent(window.components.convertIssueToMarkdown(issue))}"
+                                           class="dropdown-item" target="_blank">
+                                            ${repo.owner}/${repo.name}
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            </div>
                         </div>
                     </div>
+                ` : ''}
+                
+                <div class="control">
+                    <button class="button is-info" id="copy-markdown-btn">
+                        <span class="icon">
+                            <i class="fas fa-copy"></i>
+                        </span>
+                        <span>Markdownをコピー</span>
+                    </button>
                 </div>
             </div>
-            {% endif %}
-            
-            <div class="control">
-                <button class="button is-info" id="copy-markdown-btn">
-                    <span class="icon">
-                        <i class="fas fa-copy"></i>
-                    </span>
-                    <span>Markdownをコピー</span>
-                </button>
-            </div>
         </div>
-    </div>
-</div>
-{% endblock %}
+    `;
 
+    // タブとドロップダウンの初期化
+    window.components.initializeTabs();
+    window.components.initializeMarkdownCopy();
+    window.components.initializeDropdowns();
+});
+</script>
 {% endblock %}

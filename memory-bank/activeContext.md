@@ -1,199 +1,161 @@
-# テンプレート構造とJavaScript統合計画
+# データ管理の改善計画
 
-## テンプレート構造分析
+## 1. 現状の課題
 
-### 1. ベーステンプレート
-- base.html: 基本レイアウト
-  * エラー通知コンポーネント
-  * 基本的なページ構造
-  * 共通スクリプト/スタイル参照
+### サーバーサイドのデータ管理
+1. LocalStorageクラス（issues.json）
+   - Issue保存
+   - Issue取得
+   - 一覧表示
 
-- layout.html: 主要レイアウト
-  * ナビゲーション
-  * フッター
-  * app.js参照
+2. RepoStorageクラス（repositories.json）
+   - リポジトリ保存
+   - リポジトリ取得
+   - 一覧表示
 
-### 2. メインページ
-- index.html
-  * Issue作成フォーム
-  * 最近の履歴表示
-  * htmxフォーム処理
-  * Issue保存処理
+### クライアントサイドのデータ管理
+1. IssueStorage
+   - window.issueStorage経由でのIssue管理
+   - ブラウザのlocalStorageを使用
 
-- history.html
-  * Issue一覧表示
-  * ソート機能
-  * プレビューリンク
+2. RepoStorage
+   - window.repoStorage経由でのリポジトリ管理
+   - ブラウザのlocalStorageを使用
 
-- preview.html
-  * タブ切り替え
-  * Markdownプレビュー
-  * コピー機能
-  * GitHubリンク
+## 2. 問題点
 
-- settings.html
-  * リポジトリ管理フォーム
-  * リポジトリ一覧
-  * CRUD操作
+1. データの二重管理
+   - サーバー: JSONファイル
+   - クライアント: localStorage
+   
+2. 整合性の課題
+   - 同期が取れていない
+   - 更新タイミングの不一致
+   
+3. 不要なサーバー負荷
+   - ファイルI/O操作
+   - 永続化の重複
 
-### 3. 部分テンプレート (Partials)
-- error_message.html
-  * エラー通知表示
-  * 削除機能
+## 3. 改善方針
 
-- issue_preview.html
-  * Issue表示
-  * タブ制御
-  * Markdownコピー
-  * ローディング表示
+### APIエンドポイントの修正
 
-- repo_list.html
-  * リポジトリ一覧
-  * HTMX削除処理
-
-## 共通のインタラクションパターン
-
-### 1. フォーム処理
-- htmxによるフォーム送信
-- ローディング表示
-- 結果の動的表示
-- エラーハンドリング
-
-### 2. データ管理
-- ローカルストレージの利用
-- Issue保存
-- リポジトリ管理
-- 履歴管理
-
-### 3. UI操作
-- タブ切り替え
-- ドロップダウン
-- 通知表示
-- コピー機能
-
-## app.jsへの統合設計
-
-### 1. 共通コンポーネント管理
-```javascript
-class ComponentManager {
-    // エラーメッセージ
-    initializeErrorMessages() {
-        // error_message.htmlの機能を統合
-    }
-
-    // Issueプレビュー
-    initializeIssuePreviews() {
-        // issue_preview.htmlの機能を統合
-    }
-
-    // リポジトリリスト
-    initializeRepoLists() {
-        // repo_list.htmlの機能を統合
-    }
-}
+1. /api/requests:
+```python
+@app.post("/api/requests", response_class=HTMLResponse)
+async def api_requests(request: Request, user_input: str = Form(...)):
+    try:
+        issue = create_issue_from_text(user_input)
+        # LocalStorageへの保存を削除
+        return templates.TemplateResponse("partials/issue_preview.html", {
+            "request": request,
+            "issue": issue,
+            "use_local_storage": True  # クライアントサイドでの保存を指示
+        })
+    except HTTPException as e:
+        return templates.TemplateResponse("partials/error_message.html", {
+            "request": request,
+            "message": e.detail
+        })
 ```
 
-### 2. ページ固有の機能
-```javascript
-class PageManager {
-    // indexページ
-    initializeIndexPage() {
-        // Issue作成フォーム
-        // 履歴表示
-    }
-
-    // historyページ
-    initializeHistoryPage() {
-        // 全履歴表示
-        // ソート機能
-    }
-
-    // previewページ
-    initializePreviewPage() {
-        // タブ管理
-        // Markdownコピー
-    }
-
-    // settingsページ
-    initializeSettingsPage() {
-        // リポジトリフォーム
-        // リポジトリ管理
-    }
-}
+2. /preview/{issue_id}:
+```python
+@app.get("/preview/{issue_id}", response_class=HTMLResponse)
+async def preview_issue(request: Request, issue_id: str):
+    try:
+        # クライアントサイドでのデータ取得を前提に
+        return templates.TemplateResponse("preview.html", {
+            "request": request,
+            "issue_id": issue_id,  # IDのみを渡す
+            "repos": None  # クライアントサイドで取得
+        })
+    except Exception as e:
+        return templates.TemplateResponse("error.html", {
+            "request": request,
+            "message": str(e)
+        })
 ```
 
-### 3. イベント管理の統合
-```javascript
-class EventManager {
-    constructor() {
-        this.initializeGlobalEvents()
-        this.initializeHTMXEvents()
-    }
-
-    // グローバルイベント
-    initializeGlobalEvents() {
-        // 通知クリック
-        // ドロップダウン
-        // タブクリック
-    }
-
-    // HTMXイベント
-    initializeHTMXEvents() {
-        // beforeRequest
-        // afterRequest
-        // afterSwap
-    }
-}
+3. /history:
+```python
+@app.get("/history", response_class=HTMLResponse)
+async def read_history(request: Request):
+    # クライアントサイドでの履歴表示に変更
+    return templates.TemplateResponse("history.html", {
+        "request": request
+    })
 ```
 
-## 実装手順の更新
+4. /settings:
+```python
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    # クライアントサイドでのリポジトリ管理に変更
+    return templates.TemplateResponse("settings.html", {
+        "request": request
+    })
+```
 
-1. コンポーネントの移行
-   - Partialsの機能をComponentManagerに統合
-   - インラインスクリプトを除去
-   - data属性による制御に変更
+### HTMLテンプレートの修正
 
-2. ページ機能の統合
-   - 各ページのスクリプトをPageManagerに移行
-   - イベントハンドラの集約
-   - 共通機能の抽出
+1. preview.html:
+```html
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const issueId = '{{ issue_id }}';
+        const issue = window.issueStorage.getIssue(issueId);
+        const repos = window.repoStorage.getAllRepos();
+        
+        // データを表示用に設定
+        renderIssue(issue);
+        renderRepoList(repos);
+    });
+</script>
+```
 
-3. イベント管理の統一
-   - グローバルイベントの集約
-   - HTMXイベントの統一
-   - エラーハンドリングの標準化
+2. history.html:
+```html
+<!-- サーバーサイドのデータ参照を削除 -->
+<div id="issues-container" data-page="history">
+    <!-- PageManagerで表示制御 -->
+</div>
+```
 
-4. テンプレートの更新
-   - インラインスクリプトの削除
-   - データ属性の追加
-   - クラス名の統一
+### 実装手順
 
-5. 検証プロセス
-   - コンポーネント単位のテスト
-   - ページ機能の検証
-   - クロスページの整合性確認
-   - パフォーマンス計測
+1. サーバーサイドの変更
+   - LocalStorageクラスの削除
+   - RepoStorageクラスの削除
+   - APIエンドポイントの修正
 
-## 期待される改善点
+2. クライアントサイドの強化
+   - StorageManagerの完成
+   - PageManagerの拡張
+   - データ取得処理の統一
 
-1. メンテナンス性
-   - 機能の集中管理
-   - 重複コードの排除
-   - 命名規則の統一
+3. テンプレートの更新
+   - サーバーサイドデータ参照の削除
+   - クライアントサイド処理への移行
+   - データ属性の活用
 
-2. 再利用性
-   - コンポーネント化
-   - 共通機能の抽出
-   - イベント処理の標準化
+4. テスト
+   - ページ読み込みの確認
+   - データ永続化の確認
+   - 機能の動作確認
 
-3. パフォーマンス
-   - コード重複の削減
-   - イベントリスナーの最適化
-   - リソース読み込みの効率化
+## 4. 期待される効果
 
-4. 開発効率
-   - 機能の見通し向上
-   - デバッグの容易化
-   - 拡張性の向上
+1. パフォーマンス向上
+   - サーバー負荷の軽減
+   - ファイルI/Oの削減
+   
+2. 保守性の向上
+   - データ管理の一元化
+   - コードの簡素化
+   
+3. ユーザー体験の改善
+   - 応答速度の向上
+   - オフライン対応の可能性
 
-次のステップ：Codeモードに切り替えて実装を開始する
+次のステップ：実装の開始

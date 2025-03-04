@@ -11,8 +11,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import logging
 import json
-import yaml  # 追加
-
+import yaml
 
 # .env設定の読み込み
 load_dotenv()
@@ -29,7 +28,7 @@ class Issue(BaseModel):
     criteria: Optional[str] = None
     requirements: Optional[str] = None
     created_at: str
-    repository: Optional[str] = None  # repository 属性を追加
+    repository: Optional[str] = None
 
     class Config:
         # JSONのシリアライズ時に改行を保持
@@ -71,57 +70,6 @@ class IssueResponse(BaseModel):
     issue: Optional[Issue] = None
     message: Optional[str] = None
 
-# ストレージクラスの追加
-class LocalStorage:
-    def __init__(self, file_path: str = "issues.json"):
-        self.file_path = file_path
-        self.issues: Dict[str, Issue] = {}
-        self._load()
-
-    def _load(self):
-        """JSONファイルからissuesを読み込む"""
-        try:
-            if os.path.exists(self.file_path):
-                with open(self.file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.issues = {
-                        id: Issue(**issue_data)
-                        for id, issue_data in data.items()
-                    }
-        except Exception as e:
-            logger.error(f"Failed to load issues: {e}")
-            self.issues = {}
-
-    def _save(self):
-        """issuesをJSONファイルに保存"""
-        try:
-            with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump(
-                    {id: issue.dict() for id, issue in self.issues.items()},
-                    f,
-                    ensure_ascii=False,
-                    indent=2,
-                    default=str
-                )
-        except Exception as e:
-            logger.error(f"Failed to save issues: {e}")
-
-    def add_issue(self, issue: Issue):
-        """新しいissueを追加"""
-        self.issues[issue.id] = issue
-        self._save()
-
-    def get_issue(self, issue_id: str) -> Optional[Issue]:
-        """IDでissueを取得"""
-        return self.issues.get(issue_id)
-
-    def get_all_issues(self) -> List[Issue]:
-        """全てのissueを取得"""
-        return list(self.issues.values())
-
-# ストレージのインスタンス化
-storage = LocalStorage()
-
 # GitHubリポジトリ設定モデル
 class GitHubRepo(BaseModel):
     id: str
@@ -137,65 +85,6 @@ class GitHubRepo(BaseModel):
     @property
     def issues_url(self) -> str:
         return f"{self.url}/issues/new"
-
-# リポジトリストレージクラス
-class RepoStorage:
-    def __init__(self, file_path: str = "repositories.json"):
-        self.file_path = file_path
-        self.repos: Dict[str, GitHubRepo] = {}
-        self._load()
-    
-    def _load(self):
-        """JSONファイルからリポジトリを読み込む"""
-        try:
-            if os.path.exists(self.file_path):
-                with open(self.file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.repos = {
-                        id: GitHubRepo(**repo_data)
-                        for id, repo_data in data.items()
-                    }
-        except Exception as e:
-            logger.error(f"Failed to load repositories: {e}")
-            self.repos = {}
-    
-    def _save(self):
-        """リポジトリをJSONファイルに保存"""
-        try:
-            with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump(
-                    {id: repo.dict() for id, repo in self.repos.items()},
-                    f,
-                    ensure_ascii=False,
-                    indent=2,
-                    default=str
-                )
-        except Exception as e:
-            logger.error(f"Failed to save repositories: {e}")
-    
-    def add_repo(self, repo: GitHubRepo):
-        """新しいリポジトリを追加"""
-        self.repos[repo.id] = repo
-        self._save()
-    
-    def delete_repo(self, repo_id: str) -> bool:
-        """リポジトリを削除"""
-        if repo_id in self.repos:
-            del self.repos[repo_id]
-            self._save()
-            return True
-        return False
-    
-    def get_repo(self, repo_id: str) -> Optional[GitHubRepo]:
-        """IDでリポジトリを取得"""
-        return self.repos.get(repo_id)
-    
-    def get_all_repos(self) -> List[GitHubRepo]:
-        """全てのリポジトリを取得"""
-        return list(self.repos.values())
-
-# ストレージのインスタンス化
-repo_storage = RepoStorage()
 
 # Jinja2フィルターの追加
 def format_list_items(text):
@@ -313,85 +202,49 @@ technical_requirements:
         logger.error(f"Error in create_issue_from_text: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-def get_issue_by_id(issue_id: str) -> Optional[Issue]:
-    """IDに基づいてIssueを取得する"""
-    try:
-        return storage.get_issue(issue_id)
-    except Exception as e:
-        return None
-
 # エンドポイント
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    try:
-        sorted_issues = sorted(storage.get_all_issues(), key=lambda x: x.created_at, reverse=True)  # some_attributeを適切な属性に置き換えてください
-        recent_drafts = sorted_issues[:3] if sorted_issues else []
-
-        templates_data = []  # 本来はテンプレート一覧を取得する処理
-        
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "page_title": "Issue Draft Creator",
-            "recent_drafts": recent_drafts,
-            "templates": templates_data
-        })
-    except Exception as e:
-        # エラー発生時のログ出力
-        logger.error(f"Error in read_root: {e}")
-        return HTMLResponse("<html><body><h1>エラーが発生しました</h1><p>申し訳ありませんが、問題が発生しました。</p></body></html>")
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "page_title": "Issue Draft Creator"
+    })
 
 @app.get("/create", response_class=HTMLResponse)
 async def create_issue(request: Request):
-    try:
-        return templates.TemplateResponse("create.html", {
-            "request": request,
-            "page_title": "Issue作成"
-        })
-    except Exception as e:
-        logger.error(f"Error in create_issue: {e}")
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "message": str(e)
-        })
+    return templates.TemplateResponse("create.html", {
+        "request": request,
+        "page_title": "Issue作成"
+    })
 
 @app.post("/api/requests", response_class=HTMLResponse)
 async def api_requests(request: Request, user_input: str = Form(...)):
     try:
         issue = create_issue_from_text(user_input)
-        
+        # HTMLテンプレートのレンダリング
         return templates.TemplateResponse("partials/issue_preview.html", {
             "request": request,
             "issue": issue,
-            "use_local_storage": True  # フラグを追加
+            "use_local_storage": True,
+            "json_data": issue.dict()  # JSON形式のデータも一緒に送信
         })
     except HTTPException as e:
         return templates.TemplateResponse("partials/error_message.html", {
             "request": request,
             "message": e.detail
         })
-
-@app.get("/preview/{issue_id}", response_class=HTMLResponse)
-async def preview_issue(request: Request, issue_id: str):
-    try:
-        issue = storage.get_issue(issue_id)
-        repos = repo_storage.get_all_repos()
-        if not issue:
-            raise HTTPException(status_code=404, detail="Issue not found")
-        return templates.TemplateResponse("preview.html", {
-            "request": request,
-            "issue": issue,
-            "repos": repos
-        })
-    except HTTPException as e:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "message": e.detail
-        })
     except Exception as e:
-        return templates.TemplateResponse("error.html", {
+        return templates.TemplateResponse("partials/error_message.html", {
             "request": request,
             "message": str(e)
         })
+
+@app.get("/preview/{issue_id}", response_class=HTMLResponse)
+async def preview_issue(request: Request, issue_id: str):
+    return templates.TemplateResponse("preview.html", {
+        "request": request,
+        "issue_id": issue_id
+    })
 
 @app.get("/history", response_class=HTMLResponse)
 async def read_history(request: Request):
@@ -399,78 +252,24 @@ async def read_history(request: Request):
         "request": request
     })
 
-# GitHub関連エンドポイント
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    try:
-        repos = repo_storage.get_all_repos()
-        return templates.TemplateResponse("settings.html", {
-            "request": request,
-            "page_title": "Settings",
-            "repos": repos
-        })
-    except Exception as e:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "message": str(e)
-        })
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings(request: Request):
     return templates.TemplateResponse("settings.html", {
-        "request": request
+        "request": request,
+        "page_title": "Settings"
     })
 
 @app.post("/api/repos", response_class=HTMLResponse)
-async def add_repository(request: Request, 
-                         name: str = Form(...), 
-                         owner: str = Form(...), 
-                         url: str = Form(...)):
+async def add_repository(request: Request, name: str = Form(...), owner: str = Form(...)):
     try:
-        # URLの正規化
-        if not url.startswith(('http://', 'https://')):
-            url = 'https://' + url
-        
-        # GitHubのURLかどうかを簡易チェック
-        if 'github.com' not in url:
-            url = f'https://github.com/{owner}/{name}'
-        
-        repo = GitHubRepo(
-            id=str(uuid.uuid4()),
-            name=name,
-            owner=owner,
-            url=url,
-            created_at=datetime.utcnow().isoformat()
-        )
-        
-        repo_storage.add_repo(repo)
-        
-        return templates.TemplateResponse("partials/repo_list.html", {
-            "request": request,
-            "repos": repo_storage.get_all_repos()
-        })
-    except Exception as e:
-        return templates.TemplateResponse("partials/error_message.html", {
-            "request": request,
-            "message": str(e)
-        })
-
-@app.delete("/api/repos/{repo_id}", response_class=HTMLResponse)
-async def delete_repository(request: Request, repo_id: str):
-    try:
-        success = repo_storage.delete_repo(repo_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Repository not found")
-        
-        return templates.TemplateResponse("partials/repo_list.html", {
-            "request": request,
-            "repos": repo_storage.get_all_repos()
-        })
-    except HTTPException as e:
-        return templates.TemplateResponse("partials/error_message.html", {
-            "request": request,
-            "message": e.detail
-        })
+        repo = {
+            "id": str(uuid.uuid4()),
+            "name": name,
+            "owner": owner,
+            "url": f"https://github.com/{owner}/{name}",
+            "created_at": datetime.utcnow().isoformat()
+        }
+        return JSONResponse(content=repo)
     except Exception as e:
         return templates.TemplateResponse("partials/error_message.html", {
             "request": request,

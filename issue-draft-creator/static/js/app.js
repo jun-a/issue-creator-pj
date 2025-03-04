@@ -72,6 +72,8 @@ class ComponentManager {
         this.initializeNotifications();
         this.initializeTabs();
         this.initializeNavbar();
+        this.initializeMarkdownCopy();
+        this.initializeDropdowns();
     }
 
     // 通知関連
@@ -98,91 +100,104 @@ class ComponentManager {
         element.addEventListener('transitionend', () => element.remove());
     }
 
+    convertIssueToMarkdown(issue) {
+        const md = [];
+        md.push("## User Story\n");
+        md.push(issue.story + "\n");
+        
+        if (issue.criteria) {
+            md.push("\n## Acceptance Criteria\n");
+            issue.criteria.split('\n').forEach(criterion => {
+                if (criterion.trim()) {
+                    md.push(`- ${criterion.trim()}\n`);
+                }
+            });
+        }
+        
+        if (issue.requirements) {
+            md.push("\n## Technical Requirements\n");
+            issue.requirements.split('\n').forEach(req => {
+                if (req.trim()) {
+                    md.push(`- ${req.trim()}\n`);
+                }
+            });
+        }
+        
+        return md.join('');
+    }
+
+    initializeMarkdownCopy() {
+        const copyButton = document.getElementById('copy-markdown-btn');
+        if (copyButton) {
+            copyButton.addEventListener('click', () => {
+                const markdown = document.querySelector('#tab-markdown code').textContent;
+                navigator.clipboard.writeText(markdown)
+                    .then(() => {
+                        this.showNotification('Markdownをコピーしました', 'success');
+                    })
+                    .catch(err => {
+                        this.showNotification('コピーに失敗しました: ' + err, 'error');
+                    });
+            });
+        }
+    }
+
     // タブ関連
     initializeTabs() {
         document.querySelectorAll('[data-tab]').forEach(tab => {
-            tab.addEventListener('click', (e) => this.handleTabClick(e));
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabId = tab.getAttribute('data-tab');
+                
+                // タブの切り替え
+                tab.parentElement.parentElement.querySelectorAll('li').forEach(t => {
+                    t.classList.remove('is-active');
+                });
+                tab.parentElement.classList.add('is-active');
+                
+                // コンテンツの切り替え
+                const container = tab.closest('.message-body');
+                container.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.add('is-hidden');
+                });
+                container.querySelector(`#tab-${tabId}`).classList.remove('is-hidden');
+            });
         });
     }
 
-    handleTabClick(e) {
-        e.preventDefault();
-        const tab = e.currentTarget;
-        const tabContainer = tab.closest('.tabs');
-        const contentContainer = tabContainer.nextElementSibling.parentElement;
-        
-        // タブの切り替え
-        tabContainer.querySelectorAll('[data-tab]').forEach(t => {
-            t.parentElement.classList.remove('is-active');
+    // ドロップダウン関連
+    initializeDropdowns() {
+        document.querySelectorAll('.dropdown').forEach(dropdown => {
+            dropdown.querySelector('.dropdown-trigger button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('is-active');
+            });
         });
-        tab.parentElement.classList.add('is-active');
-        
-        // コンテンツの切り替え
-        const tabId = tab.getAttribute('data-tab');
-        contentContainer.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.add('is-hidden');
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown.is-active').forEach(dropdown => {
+                dropdown.classList.remove('is-active');
+            });
         });
-        contentContainer.querySelector(`#tab-${tabId}`).classList.remove('is-hidden');
     }
 
     // ナビゲーション関連
     initializeNavbar() {
         const burgers = document.querySelectorAll('.navbar-burger');
         burgers.forEach(burger => {
-            burger.addEventListener('click', () => this.toggleNavbar(burger));
+            burger.addEventListener('click', () => {
+                const target = document.getElementById(burger.dataset.target);
+                burger.classList.toggle('is-active');
+                target.classList.toggle('is-active');
+            });
         });
-    }
-
-    toggleNavbar(burger) {
-        const target = document.getElementById(burger.dataset.target);
-        burger.classList.toggle('is-active');
-        target.classList.toggle('is-active');
     }
 }
 
-// グローバルインスタンスの作成
-window.storage = new StorageManager();
-window.components = new ComponentManager();
-
-// 後方互換性のため
-window.issueStorage = {
-    addIssue: (...args) => window.storage.addIssue(...args),
-    getIssue: (...args) => window.storage.getIssue(...args),
-    getAllIssues: (...args) => window.storage.getAllIssues(...args),
-    deleteIssue: (...args) => window.storage.deleteIssue(...args)
-};
-
-window.repoStorage = {
-    addRepo: (...args) => window.storage.addRepo(...args),
-    getRepo: (...args) => window.storage.getRepo(...args),
-    getAllRepos: (...args) => window.storage.getAllRepos(...args),
-    deleteRepo: (...args) => window.storage.deleteRepo(...args)
-};
-
-// HTMX拡張の定義
-htmx.defineExtension('issue-manager', {
-    init: function(api) {
-        // セッションストレージの初期化
-        if (!sessionStorage.getItem('issues')) {
-            sessionStorage.setItem('issues', '[]');
-        }
-    },
-
-    onEvent: function(name, evt) {
-        // イベントハンドリングをここに集約
-        if (name === "htmx:afterRequest") {
-            // リクエスト後の処理
-        } else if (name === "htmx:beforeRequest") {
-            // リクエスト前の処理
-        }
-    }
-});
-
-// ページ読み込み時の初期化
 // イベント管理クラス
 class EventManager {
     constructor() {
-        this.MIN_LOADING_TIME = 3000;
+        this.MIN_LOADING_TIME = 2000;
         this.loadingStartTime = 0;
         this.initializeHTMXEvents();
     }
@@ -213,10 +228,24 @@ class EventManager {
         const elapsedTime = Date.now() - this.loadingStartTime;
         const remainingTime = Math.max(0, this.MIN_LOADING_TIME - elapsedTime);
 
+        if (evt.detail && evt.detail.elt) {
+            try {
+                const issueData = evt.detail.elt.querySelector('[data-auto-store="true"]');
+                if (issueData && issueData.dataset.issue) {
+                    const issue = JSON.parse(issueData.dataset.issue);
+                    window.storage.addIssue(issue);
+                }
+            } catch (e) {
+                console.error('データの処理中にエラーが発生しました:', e);
+                window.components.showNotification('データの処理中にエラーが発生しました', 'error');
+            }
+        }
+
+        // ローディング表示を制御
         setTimeout(() => {
+            document.body.classList.remove('is-loading');
             const loadingOverlay = document.getElementById('loading-overlay');
             if (loadingOverlay) {
-                document.body.classList.remove('is-loading');
                 loadingOverlay.addEventListener('transitionend', () => {
                     loadingOverlay.remove();
                 });
@@ -227,6 +256,9 @@ class EventManager {
 
     handleAfterSwap(evt) {
         window.components.initializeComponents();
+        if (evt.detail.pathInfo.requestPath === '/preview') {
+            hljs.highlightAll();
+        }
     }
 }
 
@@ -334,17 +366,33 @@ class PageManager {
             id: crypto.randomUUID(),
             name: formData.get('name'),
             owner: formData.get('owner'),
+            url: `https://github.com/${formData.get('owner')}/${formData.get('name')}`,
             created_at: new Date().toISOString()
         };
         window.storage.addRepo(repo);
         e.target.reset();
         window.components.showNotification('リポジトリを追加しました', 'success');
+        window.pages.setupRepoList();
     }
 }
 
-// アプリケーション初期化
-document.addEventListener('DOMContentLoaded', () => {
-    window.events = new EventManager();
-    window.pages = new PageManager();
-    window.components.initializeComponents();
-});
+// グローバルインスタンスの作成
+window.storage = new StorageManager();
+window.components = new ComponentManager();
+window.pages = new PageManager();
+window.events = new EventManager();
+
+// 後方互換性のため
+window.issueStorage = {
+    addIssue: (...args) => window.storage.addIssue(...args),
+    getIssue: (...args) => window.storage.getIssue(...args),
+    getAllIssues: (...args) => window.storage.getAllIssues(...args),
+    deleteIssue: (...args) => window.storage.deleteIssue(...args)
+};
+
+window.repoStorage = {
+    addRepo: (...args) => window.storage.addRepo(...args),
+    getRepo: (...args) => window.storage.getRepo(...args),
+    getAllRepos: (...args) => window.storage.getAllRepos(...args),
+    deleteRepo: (...args) => window.storage.deleteRepo(...args)
+};
