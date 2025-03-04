@@ -67,7 +67,6 @@ class ComponentManager {
         this.initializeComponents();
     }
 
-    // 共通コンポーネントの初期化
     initializeComponents() {
         this.initializeNotifications();
         this.initializeTabs();
@@ -76,7 +75,6 @@ class ComponentManager {
         this.initializeDropdowns();
     }
 
-    // 通知関連
     initializeNotifications() {
         document.querySelectorAll('.notification .delete').forEach(button => {
             button.addEventListener('click', () => this.hideNotification(button.parentNode));
@@ -142,7 +140,21 @@ class ComponentManager {
         }
     }
 
-    // タブ関連
+    initializeDropdowns() {
+        document.querySelectorAll('.dropdown').forEach(dropdown => {
+            dropdown.querySelector('.dropdown-trigger button').addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('is-active');
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown.is-active').forEach(dropdown => {
+                dropdown.classList.remove('is-active');
+            });
+        });
+    }
+
     initializeTabs() {
         document.querySelectorAll('[data-tab]').forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -165,23 +177,6 @@ class ComponentManager {
         });
     }
 
-    // ドロップダウン関連
-    initializeDropdowns() {
-        document.querySelectorAll('.dropdown').forEach(dropdown => {
-            dropdown.querySelector('.dropdown-trigger button').addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdown.classList.toggle('is-active');
-            });
-        });
-
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.dropdown.is-active').forEach(dropdown => {
-                dropdown.classList.remove('is-active');
-            });
-        });
-    }
-
-    // ナビゲーション関連
     initializeNavbar() {
         const burgers = document.querySelectorAll('.navbar-burger');
         burgers.forEach(burger => {
@@ -241,7 +236,6 @@ class EventManager {
             }
         }
 
-        // ローディング表示を制御
         setTimeout(() => {
             document.body.classList.remove('is-loading');
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -306,6 +300,102 @@ class PageManager {
 
     initializeSettingsPage() {
         this.setupRepoForm();
+        this.setupRepoList();
+    }
+
+    setupRepoForm() {
+        const form = document.getElementById('repo-form');
+        if (form) {
+            form.addEventListener('submit', this.handleRepoSubmit.bind(this));
+        }
+    }
+
+    setupRepoList() {
+        const repos = Object.values(window.storage.getAllRepos());
+        this.renderRepoList(repos);
+    }
+
+    // リポジトリリストの表示
+    renderRepoList(repos) {
+        const container = document.getElementById('repo-list');
+        if (!container) return;
+
+        if (repos.length > 0) {
+            container.innerHTML = repos.map(repo => `
+                <tr>
+                    <td>${repo.owner}/${repo.name}</td>
+                    <td><a href="${repo.url}" target="_blank">${repo.url}</a></td>
+                    <td>${new Date(repo.created_at).toLocaleString('ja-JP')}</td>
+                    <td>
+                        <div class="buttons are-small">
+                            <button class="button is-danger" data-repo-id="${repo.id}" data-action="delete-repo">
+                                <span class="icon">
+                                    <i class="fas fa-trash"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            // 削除ボタンのイベントハンドラ設定
+            container.querySelectorAll('[data-action="delete-repo"]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const repoId = button.dataset.repoId;
+                    if (window.storage.deleteRepo(repoId)) {
+                        window.components.showNotification('リポジトリを削除しました', 'success');
+                        this.setupRepoList();
+                    }
+                });
+            });
+        } else {
+            container.innerHTML = `
+                <tr>
+                    <td colspan="4" class="has-text-centered">
+                        登録されたリポジトリはありません
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // フォームの送信処理
+    handleRepoSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const name = formData.get('name').trim();
+        const owner = formData.get('owner').trim();
+
+        // 入力値のバリデーション
+        if (!name || !owner) {
+            window.components.showNotification('リポジトリ名とオーナー名を入力してください', 'error');
+            return;
+        }
+
+        // 既存のリポジトリをチェック
+        const repos = Object.values(window.storage.getAllRepos());
+        const exists = repos.some(repo =>
+            repo.name.toLowerCase() === name.toLowerCase() &&
+            repo.owner.toLowerCase() === owner.toLowerCase()
+        );
+
+        if (exists) {
+            window.components.showNotification('このリポジトリは既に登録されています', 'error');
+            return;
+        }
+
+        const repo = {
+            id: crypto.randomUUID(),
+            name: name,
+            owner: owner,
+            url: `https://github.com/${owner}/${name}`,
+            created_at: new Date().toISOString()
+        };
+
+        window.storage.addRepo(repo);
+        e.target.reset();
+        window.components.showNotification('リポジトリを追加しました', 'success');
+        this.setupRepoList();
     }
 
     setupRecentIssues() {
@@ -319,13 +409,6 @@ class PageManager {
         const issues = Object.values(window.storage.getAllIssues())
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         this.renderIssueList('issues-container', issues);
-    }
-
-    setupRepoForm() {
-        const form = document.getElementById('repo-form');
-        if (form) {
-            form.addEventListener('submit', this.handleRepoSubmit.bind(this));
-        }
     }
 
     renderIssueList(containerId, issues) {
@@ -358,29 +441,13 @@ class PageManager {
             `;
         }
     }
-
-    handleRepoSubmit(e) {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const repo = {
-            id: crypto.randomUUID(),
-            name: formData.get('name'),
-            owner: formData.get('owner'),
-            url: `https://github.com/${formData.get('owner')}/${formData.get('name')}`,
-            created_at: new Date().toISOString()
-        };
-        window.storage.addRepo(repo);
-        e.target.reset();
-        window.components.showNotification('リポジトリを追加しました', 'success');
-        window.pages.setupRepoList();
-    }
 }
 
 // グローバルインスタンスの作成
 window.storage = new StorageManager();
 window.components = new ComponentManager();
-window.pages = new PageManager();
 window.events = new EventManager();
+window.pages = new PageManager();
 
 // 後方互換性のため
 window.issueStorage = {

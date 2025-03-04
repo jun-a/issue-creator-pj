@@ -55,11 +55,28 @@
                 </div>
             </form>
             
-            <div id="repo-list-container">
-                <!-- リポジトリ一覧はJavaScriptで動的に生成 -->
+            <div class="table-container">
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>リポジトリ</th>
+                            <th>URL</th>
+                            <th>登録日時</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repo-list">
+                        <!-- リポジトリ一覧はJavaScriptで動的に生成 -->
+                    </tbody>
+                </table>
             </div>
-
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    window.pages.initializeSettingsPage();
+});
+</script>
 {% endblock %}
