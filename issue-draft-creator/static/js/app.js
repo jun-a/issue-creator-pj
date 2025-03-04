@@ -215,7 +215,7 @@ class EventManager {
         loadingOverlay.innerHTML = `
             <div class="loading-content">
                 <span class="icon is-large">
-                    <i class="fas fa-spinner fa-pulse fa-2x"></i>
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
                 </span>
                 <p class="mt-3">Issue を生成中...</p>
             </div>

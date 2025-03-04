@@ -288,6 +288,16 @@ tr:hover {
     animation: pulse 1.5s infinite ease-in-out;
 }
 
+/* ローディングスピナーアニメーション */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
 #loading-indicator {
     position: relative;
     z-index: 1000;
