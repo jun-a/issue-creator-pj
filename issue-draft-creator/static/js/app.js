@@ -223,12 +223,19 @@ class EventManager {
         const elapsedTime = Date.now() - this.loadingStartTime;
         const remainingTime = Math.max(0, this.MIN_LOADING_TIME - elapsedTime);
 
+        // データの保存処理
         if (evt.detail && evt.detail.elt) {
             try {
                 const issueData = evt.detail.elt.querySelector('[data-auto-store="true"]');
                 if (issueData && issueData.dataset.issue) {
                     const issue = JSON.parse(issueData.dataset.issue);
-                    window.storage.addIssue(issue);
+                    if (issue && issue.id && issue.title && issue.story) {
+                        window.storage.addIssue(issue);
+                        console.log('Issue saved successfully:', issue);
+                    } else {
+                        console.error('Invalid issue data structure:', issue);
+                        window.components.showNotification('Issue データの形式が不正です', 'error');
+                    }
                 }
             } catch (e) {
                 console.error('データの処理中にエラーが発生しました:', e);

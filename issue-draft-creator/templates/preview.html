@@ -30,6 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    function nl2br(text) {
+        if (!text) return '';
+        return text.replace(/\n/g, '<br>');
+    }
+
     const container = document.getElementById('issue-preview');
     container.innerHTML = `
         <div class="column is-10 is-offset-1">
@@ -57,19 +62,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     <div id="tab-preview" class="tab-content content markdown-preview">
                         <h3>User Story</h3>
-                        <p>${issue.story}</p>
+                        <p>${nl2br(issue.story)}</p>
                         
                         ${issue.criteria ? `
                             <h3>Acceptance Criteria</h3>
                             <ul>
-                                ${issue.criteria.split('\n').map(item => `<li>${item}</li>`).join('')}
+                                ${issue.criteria.split('\n')
+                                    .filter(item => item.trim())
+                                    .map(item => `<li>${nl2br(item.trim())}</li>`)
+                                    .join('')}
                             </ul>
                         ` : ''}
                         
                         ${issue.requirements ? `
                             <h3>Technical Requirements</h3>
                             <ul>
-                                ${issue.requirements.split('\n').map(item => `<li>${item}</li>`).join('')}
+                                ${issue.requirements.split('\n')
+                                    .filter(item => item.trim())
+                                    .map(item => `<li>${nl2br(item.trim())}</li>`)
+                                    .join('')}
                             </ul>
                         ` : ''}
                     </div>

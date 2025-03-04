@@ -93,6 +93,12 @@ def format_list_items(text):
         return []
     return [line.strip() for line in text.split('\n') if line.strip()]
 
+def nl2br(text):
+    """改行を<br>タグに変換"""
+    if not text:
+        return ""
+    return text.replace('\n', '<br>')
+
 def to_markdown(issue):
     """IssueをMarkdown形式に変換するフィルター"""
     return issue.to_markdown()
@@ -103,6 +109,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 templates.env.filters["format_list_items"] = format_list_items
 templates.env.filters["to_markdown"] = to_markdown
+templates.env.filters["nl2br"] = nl2br
 
 # ロガーの設定
 logger = logging.getLogger("uvicorn")
@@ -221,12 +228,21 @@ async def create_issue(request: Request):
 async def api_requests(request: Request, user_input: str = Form(...)):
     try:
         issue = create_issue_from_text(user_input)
+        issue_dict = {
+            "id": issue.id,
+            "title": issue.title,
+            "story": issue.story,
+            "criteria": issue.criteria,
+            "requirements": issue.requirements,
+            "created_at": issue.created_at,
+            "repository": issue.repository
+        }
         # HTMLテンプレートのレンダリング
         return templates.TemplateResponse("partials/issue_preview.html", {
             "request": request,
             "issue": issue,
             "use_local_storage": True,
-            "json_data": issue.dict()  # JSON形式のデータも一緒に送信
+            "json_data": issue_dict  # 辞書形式でデータを送信
         })
     except HTTPException as e:
         return templates.TemplateResponse("partials/error_message.html", {

@@ -28,13 +28,13 @@
         
         <div id="tab-preview" class="tab-content content markdown-preview">
             <h3>User Story</h3>
-            <p>{{ issue.story }}</p>
+            <p>{{ issue.story|nl2br|safe }}</p>
             
             {% if issue.criteria %}
             <h3>Acceptance Criteria</h3>
             <ul>
                 {% for item in issue.criteria|format_list_items %}
-                <li>{{ item }}</li>
+                <li>{{ item|nl2br|safe }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
@@ -43,7 +43,7 @@
             <h3>Technical Requirements</h3>
             <ul>
                 {% for item in issue.requirements|format_list_items %}
-                <li>{{ item }}</li>
+                <li>{{ item|nl2br|safe }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
@@ -100,10 +100,23 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ローカルストレージへの保存
-    const issueData = document.querySelector('[data-auto-store="true"]');
-    if (issueData) {
-        const issue = JSON.parse(issueData.dataset.issue);
-        window.storage.addIssue(issue);
+    try {
+        const issueData = document.querySelector('[data-auto-store="true"]');
+        if (issueData && issueData.dataset.issue) {
+            const issue = JSON.parse(issueData.dataset.issue);
+            if (issue && issue.id) {
+                window.storage.addIssue(issue);
+                console.log('Issue saved:', issue);
+            } else {
+                console.error('Invalid issue data:', issue);
+                window.components.showNotification('不正なIssueデータです', 'error');
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('Error saving issue:', error);
+        window.components.showNotification('データの保存中にエラーが発生しました', 'error');
+        return;
     }
     
     // GitHub連携の初期化
