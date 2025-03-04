@@ -1,13 +1,16 @@
-class IssueStorage {
+// ストレージ管理クラス
+class StorageManager {
     constructor() {
         this.storage = localStorage;
-        this.key = 'issues';
+        this.issueKey = 'issues';
+        this.repoKey = 'repositories';
     }
 
+    // Issue関連
     addIssue(issue) {
         const issues = this.getAllIssues();
         issues[issue.id] = issue;
-        this.storage.setItem(this.key, JSON.stringify(issues));
+        this.storage.setItem(this.issueKey, JSON.stringify(issues));
     }
 
     getIssue(id) {
@@ -16,7 +19,7 @@ class IssueStorage {
     }
 
     getAllIssues() {
-        const data = this.storage.getItem(this.key);
+        const data = this.storage.getItem(this.issueKey);
         return data ? JSON.parse(data) : {};
     }
 
@@ -24,26 +27,17 @@ class IssueStorage {
         const issues = this.getAllIssues();
         if (issues[id]) {
             delete issues[id];
-            this.storage.setItem(this.key, JSON.stringify(issues));
+            this.storage.setItem(this.issueKey, JSON.stringify(issues));
             return true;
         }
         return false;
     }
-}
 
-// グローバルインスタンスの作成
-window.issueStorage = new IssueStorage();
-
-class RepoStorage {
-    constructor() {
-        this.storage = localStorage;
-        this.key = 'repositories';
-    }
-
+    // リポジトリ関連
     addRepo(repo) {
         const repos = this.getAllRepos();
         repos[repo.id] = repo;
-        this.storage.setItem(this.key, JSON.stringify(repos));
+        this.storage.setItem(this.repoKey, JSON.stringify(repos));
     }
 
     getRepo(id) {
@@ -52,7 +46,7 @@ class RepoStorage {
     }
 
     getAllRepos() {
-        const data = this.storage.getItem(this.key);
+        const data = this.storage.getItem(this.repoKey);
         return data ? JSON.parse(data) : {};
     }
 
@@ -60,15 +54,110 @@ class RepoStorage {
         const repos = this.getAllRepos();
         if (repos[id]) {
             delete repos[id];
-            this.storage.setItem(this.key, JSON.stringify(repos));
+            this.storage.setItem(this.repoKey, JSON.stringify(repos));
             return true;
         }
         return false;
     }
 }
 
+// UIコンポーネント管理クラス
+class ComponentManager {
+    constructor() {
+        this.initializeComponents();
+    }
+
+    // 共通コンポーネントの初期化
+    initializeComponents() {
+        this.initializeNotifications();
+        this.initializeTabs();
+        this.initializeNavbar();
+    }
+
+    // 通知関連
+    initializeNotifications() {
+        document.querySelectorAll('.notification .delete').forEach(button => {
+            button.addEventListener('click', () => this.hideNotification(button.parentNode));
+        });
+    }
+
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification is-${type}`;
+        notification.innerHTML = `
+            <button class="delete" aria-label="delete"></button>
+            <p>${message}</p>
+        `;
+        notification.querySelector('.delete').addEventListener('click',
+            () => this.hideNotification(notification));
+        document.body.appendChild(notification);
+    }
+
+    hideNotification(element) {
+        element.classList.add('is-hiding');
+        element.addEventListener('transitionend', () => element.remove());
+    }
+
+    // タブ関連
+    initializeTabs() {
+        document.querySelectorAll('[data-tab]').forEach(tab => {
+            tab.addEventListener('click', (e) => this.handleTabClick(e));
+        });
+    }
+
+    handleTabClick(e) {
+        e.preventDefault();
+        const tab = e.currentTarget;
+        const tabContainer = tab.closest('.tabs');
+        const contentContainer = tabContainer.nextElementSibling.parentElement;
+        
+        // タブの切り替え
+        tabContainer.querySelectorAll('[data-tab]').forEach(t => {
+            t.parentElement.classList.remove('is-active');
+        });
+        tab.parentElement.classList.add('is-active');
+        
+        // コンテンツの切り替え
+        const tabId = tab.getAttribute('data-tab');
+        contentContainer.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('is-hidden');
+        });
+        contentContainer.querySelector(`#tab-${tabId}`).classList.remove('is-hidden');
+    }
+
+    // ナビゲーション関連
+    initializeNavbar() {
+        const burgers = document.querySelectorAll('.navbar-burger');
+        burgers.forEach(burger => {
+            burger.addEventListener('click', () => this.toggleNavbar(burger));
+        });
+    }
+
+    toggleNavbar(burger) {
+        const target = document.getElementById(burger.dataset.target);
+        burger.classList.toggle('is-active');
+        target.classList.toggle('is-active');
+    }
+}
+
 // グローバルインスタンスの作成
-window.repoStorage = new RepoStorage();
+window.storage = new StorageManager();
+window.components = new ComponentManager();
+
+// 後方互換性のため
+window.issueStorage = {
+    addIssue: (...args) => window.storage.addIssue(...args),
+    getIssue: (...args) => window.storage.getIssue(...args),
+    getAllIssues: (...args) => window.storage.getAllIssues(...args),
+    deleteIssue: (...args) => window.storage.deleteIssue(...args)
+};
+
+window.repoStorage = {
+    addRepo: (...args) => window.storage.addRepo(...args),
+    getRepo: (...args) => window.storage.getRepo(...args),
+    getAllRepos: (...args) => window.storage.getAllRepos(...args),
+    deleteRepo: (...args) => window.storage.deleteRepo(...args)
+};
 
 // HTMX拡張の定義
 htmx.defineExtension('issue-manager', {
@@ -89,122 +178,173 @@ htmx.defineExtension('issue-manager', {
     }
 });
 
-// ローディング表示の最小時間を設定
-const MIN_LOADING_TIME = 3000; // 3秒
+// ページ読み込み時の初期化
+// イベント管理クラス
+class EventManager {
+    constructor() {
+        this.MIN_LOADING_TIME = 3000;
+        this.loadingStartTime = 0;
+        this.initializeHTMXEvents();
+    }
 
-// ローディング状態の管理
-let loadingStartTime;
-let loadingTimer;
+    initializeHTMXEvents() {
+        document.body.addEventListener('htmx:beforeRequest', this.handleBeforeRequest.bind(this));
+        document.body.addEventListener('htmx:afterRequest', this.handleAfterRequest.bind(this));
+        document.body.addEventListener('htmx:afterSwap', this.handleAfterSwap.bind(this));
+    }
 
-document.body.addEventListener('htmx:beforeRequest', function(evt) {
-    // issue-previewの条件を削除し、すべてのリクエストに対応
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.id = 'loading-overlay';
-    loadingOverlay.innerHTML = `
-        <div class="loading-content">
-            <span class="icon is-large">
-                <i class="fas fa-spinner fa-pulse fa-2x"></i>
-            </span>
-            <p class="mt-3">Issue を生成中...</p>
-        </div>
-    `;
-    document.body.appendChild(loadingOverlay);
-    document.body.classList.add('is-loading');
-    loadingStartTime = Date.now();
-});
+    handleBeforeRequest(evt) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="loading-content">
+                <span class="icon is-large">
+                    <i class="fas fa-spinner fa-pulse fa-2x"></i>
+                </span>
+                <p class="mt-3">Issue を生成中...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+        document.body.classList.add('is-loading');
+        this.loadingStartTime = Date.now();
+    }
 
-document.body.addEventListener('htmx:afterRequest', function(evt) {
-    // issue-previewの条件を削除し、すべてのリクエストに対応
-    const elapsedTime = Date.now() - loadingStartTime;
-    const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+    handleAfterRequest(evt) {
+        const elapsedTime = Date.now() - this.loadingStartTime;
+        const remainingTime = Math.max(0, this.MIN_LOADING_TIME - elapsedTime);
 
-    setTimeout(() => {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) {
-            document.body.classList.remove('is-loading');
-            loadingOverlay.addEventListener('transitionend', () => {
-                loadingOverlay.remove();
-            });
-            loadingOverlay.classList.add('is-hiding');
-        }
-    }, remainingTime);
-});
+        setTimeout(() => {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                document.body.classList.remove('is-loading');
+                loadingOverlay.addEventListener('transitionend', () => {
+                    loadingOverlay.remove();
+                });
+                loadingOverlay.classList.add('is-hiding');
+            }
+        }, remainingTime);
+    }
 
-// ページ読み込み完了時の処理
-document.addEventListener('DOMContentLoaded', function() {
-    // 通知メッセージの閉じるボタン
-    document.querySelectorAll('.notification .delete').forEach(button => {
-        button.addEventListener('click', () => {
-            button.parentNode.remove();
-        });
-    });
-    
-    // タブ切り替え機能の初期化
-    initializeTabs();
-});
-
-// 動的に追加された要素に対するイベントハンドラの設定
-document.body.addEventListener('htmx:afterSwap', function(event) {
-    // タブ切り替え機能の再初期化
-    initializeTabs();
-    // 通知の初期化
-    initializeNotifications();
-});
-
-// タブ切り替え機能
-function initializeTabs() {
-    document.querySelectorAll('[data-tab]').forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // 親要素のコンテキスト内でタブを探す
-            const tabContainer = this.closest('.tabs');
-            const contentContainer = tabContainer.nextElementSibling.parentElement;
-            
-            // タブのアクティブ状態を切り替え
-            tabContainer.querySelectorAll('[data-tab]').forEach(t => {
-                t.parentElement.classList.remove('is-active');
-            });
-            this.parentElement.classList.add('is-active');
-            
-            // コンテンツの表示/非表示を切り替え
-            const tabId = this.getAttribute('data-tab');
-            contentContainer.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('is-hidden');
-            });
-            contentContainer.querySelector(`#tab-${tabId}`).classList.remove('is-hidden');
-        });
-    });
-}
-
-// ナビゲーションバーの制御
-function initializeNavbar() {
-    const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
-    if ($navbarBurgers.length > 0) {
-        $navbarBurgers.forEach(el => {
-            el.addEventListener('click', () => {
-                const target = el.dataset.target;
-                const $target = document.getElementById(target);
-                el.classList.toggle('is-active');
-                $target.classList.toggle('is-active');
-            });
-        });
+    handleAfterSwap(evt) {
+        window.components.initializeComponents();
     }
 }
 
-// 通知の制御
-function initializeNotifications() {
-    (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
-        const $notification = $delete.parentNode;
-        $delete.addEventListener('click', () => {
-            $notification.parentNode.removeChild($notification);
-        });
-    });
+// ページ管理クラス
+class PageManager {
+    constructor() {
+        this.currentPage = this.identifyCurrentPage();
+        this.initialize();
+    }
+
+    identifyCurrentPage() {
+        const path = window.location.pathname;
+        if (path === '/') return 'index';
+        return path.split('/')[1] || 'index';
+    }
+
+    initialize() {
+        switch (this.currentPage) {
+            case 'index':
+                this.initializeIndexPage();
+                break;
+            case 'history':
+                this.initializeHistoryPage();
+                break;
+            case 'preview':
+                this.initializePreviewPage();
+                break;
+            case 'settings':
+                this.initializeSettingsPage();
+                break;
+        }
+    }
+
+    initializeIndexPage() {
+        this.setupRecentIssues();
+    }
+
+    initializeHistoryPage() {
+        this.setupIssueList();
+    }
+
+    initializePreviewPage() {
+        window.components.initializeTabs();
+    }
+
+    initializeSettingsPage() {
+        this.setupRepoForm();
+    }
+
+    setupRecentIssues() {
+        const issues = Object.values(window.storage.getAllIssues())
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(0, 5);
+        this.renderIssueList('recent-issues-container', issues);
+    }
+
+    setupIssueList() {
+        const issues = Object.values(window.storage.getAllIssues())
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        this.renderIssueList('issues-container', issues);
+    }
+
+    setupRepoForm() {
+        const form = document.getElementById('repo-form');
+        if (form) {
+            form.addEventListener('submit', this.handleRepoSubmit.bind(this));
+        }
+    }
+
+    renderIssueList(containerId, issues) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        if (issues.length > 0) {
+            container.innerHTML = issues.map(issue => `
+                <tr>
+                    <td>${issue.title}</td>
+                    <td>${new Date(issue.created_at).toLocaleString('ja-JP')}</td>
+                    <td>
+                        <div class="buttons are-small">
+                            <a href="/preview/${issue.id}" class="button is-primary">
+                                <span class="icon">
+                                    <i class="fas fa-eye"></i>
+                                </span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            container.innerHTML = `
+                <tr>
+                    <td colspan="3" class="has-text-centered">
+                        作成されたIssueはありません
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    handleRepoSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const repo = {
+            id: crypto.randomUUID(),
+            name: formData.get('name'),
+            owner: formData.get('owner'),
+            created_at: new Date().toISOString()
+        };
+        window.storage.addRepo(repo);
+        e.target.reset();
+        window.components.showNotification('リポジトリを追加しました', 'success');
+    }
 }
 
-// ページ読み込み時の初期化
+// アプリケーション初期化
 document.addEventListener('DOMContentLoaded', () => {
-    initializeNavbar();
-    initializeNotifications();
-    initializeTabs();
+    window.events = new EventManager();
+    window.pages = new PageManager();
+    window.components.initializeComponents();
 });
